@@ -8,7 +8,7 @@ interface Network {
 }
 
 // put the UNL you want to prioritize at the front
-const mainMainnetUnls = ['vl.ripple.com', 'vl.xrplf.org']
+const mainMainnetUnls = ['postfiat.org/testnet_vl.json']
 let mainnetUnls: string[]
 if (config.mainnet_unl == null) {
   mainnetUnls = mainMainnetUnls
@@ -27,36 +27,6 @@ const networks: Network[] = [
     entry: config.mainnet_p2p_server,
     port: 51235,
     unls: mainnetUnls,
-  },
-  {
-    id: 'test',
-    entry: 's.altnet.rippletest.net',
-    port: 51235,
-    unls: ['vl.altnet.rippletest.net'],
-  },
-  {
-    id: 'dev',
-    entry: 's.devnet.rippletest.net',
-    port: 51235,
-    unls: ['vl.devnet.rippletest.net'],
-  },
-  {
-    id: 'amm-dev',
-    entry: 'amm.devnet.rippletest.net',
-    port: 51235,
-    unls: ['vlamm.devnet.rippletest.net'],
-  },
-  {
-    id: 'xahau-main',
-    entry: 'xahau.network',
-    port: 443,
-    unls: ['vl.xahau.org'],
-  },
-  {
-    id: 'xahau-test',
-    entry: 'xahau-test.net',
-    port: 443,
-    unls: ['vl3.beta.bithomp.com'],
   },
 ]
 
