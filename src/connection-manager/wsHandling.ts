@@ -35,7 +35,7 @@ const LEDGER_HASHES_SIZE = 10
 const GOT_MAJORITY_FLAG = 65536
 const LOST_MAJORITY_FLAG = 131072
 const FOURTEEN_DAYS_IN_MILLISECONDS = 14 * 24 * 60 * 60 * 1000
-const ports = [443, 80, 6005, 6006, 51233, 51234]
+const ports = [443, 80, 6005, 6006, 6007, 51233, 51234]
 const protocols = ['wss://', 'ws://']
 
 const log = logger({ name: 'connections' })

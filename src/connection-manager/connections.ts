@@ -26,7 +26,7 @@ import {
 } from './wsHandling'
 
 const log = logger({ name: 'connections' })
-const ports = [443, 80, 6005, 6006, 51233, 51234]
+const ports = [443, 80, 6005, 6006, 6007, 51233, 51234]
 const protocols = ['wss://', 'ws://']
 const networkFee: Map<string, FeeVote> = new Map()
 const validationNetworkDb: Map<string, string> = new Map()

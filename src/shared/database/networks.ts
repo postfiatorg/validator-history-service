@@ -25,7 +25,7 @@ const networks: Network[] = [
   {
     id: 'main',
     entry: config.mainnet_p2p_server,
-    port: 51235,
+    port: 2559,
     unls: mainnetUnls,
   },
 ]
