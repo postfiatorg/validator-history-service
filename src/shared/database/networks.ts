@@ -23,7 +23,7 @@ if (config.mainnet_unl == null) {
 
 const networks: Network[] = [
   {
-    id: 'main',
+    id: 'test',
     entry: config.mainnet_p2p_server,
     port: 2559,
     unls: mainnetUnls,
