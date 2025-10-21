@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: vhs-postgres
+    environment:
+      POSTGRES_USER: vhs_user
+      POSTGRES_PASSWORD: vhs_password
+      POSTGRES_DB: validator_history_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vhs_user -d validator_history_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vhs-network
+
+  # Crawler Service
+  crawler:
+    image: agtipft/validator-history-service:devnet-latest
+    container_name: vhs-crawler
+    command: ["node", "build/crawler/index.js"]
+    environment:
+      # Database Configuration
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_USER: vhs_user
+      DB_PASSWORD: vhs_password
+      DB_DATABASE: validator_history_db
+      ACQUIRE_CONNECTION_TIMEOUT: 120000
+
+      # Node Environment
+      NODE_ENV: development
+
+      # Network Configuration
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
+      MAINNET_UNL: postfiat.org/testnet_vl.json
+      RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
+
+      # Optional: Geolocation (add your keys if needed)
+      # MAXMIND_USER: your_maxmind_user
+      # MAXMIND_KEY: your_maxmind_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vhs-network
+
+  # Connection Manager Service
+  connections:
+    image: agtipft/validator-history-service:devnet-latest
+    container_name: vhs-connections
+    command: ["node", "build/connection-manager/index.js"]
+    environment:
+      # Database Configuration
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_USER: vhs_user
+      DB_PASSWORD: vhs_password
+      DB_DATABASE: validator_history_db
+      ACQUIRE_CONNECTION_TIMEOUT: 120000
+
+      # Node Environment
+      NODE_ENV: development
+
+      # Network Configuration
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
+      MAINNET_UNL: postfiat.org/testnet_vl.json
+      RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
+
+      # Optional: Geolocation (add your keys if needed)
+      # MAXMIND_USER: your_maxmind_user
+      # MAXMIND_KEY: your_maxmind_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vhs-network
+
+  # API Service
+  api:
+    image: agtipft/validator-history-service:devnet-latest
+    container_name: vhs-api
+    command: ["node", "build/api/index.js"]
+    environment:
+      # Database Configuration
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_USER: vhs_user
+      DB_PASSWORD: vhs_password
+      DB_DATABASE: validator_history_db
+      ACQUIRE_CONNECTION_TIMEOUT: 120000
+
+      # Node Environment
+      NODE_ENV: development
+
+      # API Configuration
+      PORT: 3000
+      ADDR: 0.0.0.0
+
+      # Network Configuration
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
+      MAINNET_UNL: postfiat.org/testnet_vl.json
+      RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
+
+      # Optional: Geolocation (add your keys if needed)
+      # MAXMIND_USER: your_maxmind_user
+      # MAXMIND_KEY: your_maxmind_key
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vhs-network
+
+networks:
+  vhs-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
