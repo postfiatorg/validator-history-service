@@ -40,7 +40,6 @@ services:
 
       # Network Configuration
       MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
-      MAINNET_UNL: postfiat.org/testnet_vl.json
       RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
 
       # Optional: Geolocation (add your keys if needed)
@@ -72,7 +71,6 @@ services:
 
       # Network Configuration
       MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
-      MAINNET_UNL: postfiat.org/testnet_vl.json
       RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
 
       # Optional: Geolocation (add your keys if needed)
@@ -108,7 +106,6 @@ services:
 
       # Network Configuration
       MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
-      MAINNET_UNL: postfiat.org/testnet_vl.json
       RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
 
       # Optional: Geolocation (add your keys if needed)

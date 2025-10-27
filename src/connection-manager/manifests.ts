@@ -17,7 +17,7 @@ import {
   UNLValidator,
   DatabaseManifest,
 } from '../shared/types'
-import { fetchValidatorList, fetchRpcManifest, getLists } from '../shared/utils'
+import { fetchValidatorsFromRpc, fetchRpcManifest, getLists } from '../shared/utils'
 import logger from '../shared/utils/logger'
 
 import hard_dunl from './fixtures/unl-hard.json'
@@ -25,18 +25,6 @@ import hard_dunl from './fixtures/unl-hard.json'
 const log = logger({ name: 'manifests' })
 const MANIFESTS_JOB_INTERVAL = 60 * 60 * 1000
 let jobsStarted = false
-
-/**
- * Get the first UNL in the list of UNLs for the network with name `networkName`.
- *
- * @param networkName - The name of the network.
- * @returns The first UNL in the list of UNLs for the network.
- */
-async function getFirstUNL(networkName: string): Promise<string> {
-  const networks = await getNetworks()
-  const network = networks.filter((ntwk) => ntwk.id === networkName)[0]
-  return network.unls[0]
-}
 
 /**
  * Performs Domain verification and saves the Manifest.
@@ -92,14 +80,15 @@ export async function updateUNLManifests(): Promise<void> {
 
 /**
  * Saves manifests from the UNL.
+ * Fetches validators directly from the rippled node using RPC.
  *
  * @param network - The network to update.
  * @returns A promise that resolves to void once all UNL validators are saved.
  */
 async function updateUNLManifestNetwork(network: string): Promise<void> {
   try {
-    log.info('Fetching UNL...')
-    const unl: UNLBlob = await fetchValidatorList(await getFirstUNL(network))
+    log.info('Fetching UNL from rippled RPC...')
+    const unl: UNLBlob = await fetchValidatorsFromRpc()
     const promises: Array<Promise<void>> = []
 
     unl.validators.forEach((validator: UNLValidator) => {
@@ -167,7 +156,7 @@ async function updateValidatorDomainsFromManifests(): Promise<void> {
 
 /**
  * Update the unl column if the validator is included in a validator list for a network.
- * The unl column contains the domain where the validator list is served.
+ * The unl column now stores 'rpc' to indicate validators are fetched from the rippled node.
  *
  * @returns A promise that resolves to void once unl column is updated for all applicable validators.
  */
@@ -193,7 +182,8 @@ export async function updateUnls(): Promise<void> {
           )
         })
 
-      const networkUNL = await getFirstUNL(name)
+      // Mark validators as fetched from RPC instead of a domain
+      const networkUNL = 'rpc'
       await query('validators')
         .whereIn('signing_key', keys)
         .update({ unl: networkUNL })
