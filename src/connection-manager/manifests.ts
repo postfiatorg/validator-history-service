@@ -82,10 +82,10 @@ export async function updateUNLManifests(): Promise<void> {
  * Saves manifests from the UNL.
  * Fetches validators directly from the rippled node using RPC.
  *
- * @param network - The network to update.
+ * @param _network - The network to update (unused, kept for compatibility).
  * @returns A promise that resolves to void once all UNL validators are saved.
  */
-async function updateUNLManifestNetwork(network: string): Promise<void> {
+async function updateUNLManifestNetwork(_network: string): Promise<void> {
   try {
     log.info('Fetching UNL from rippled RPC...')
     const unl: UNLBlob = await fetchValidatorsFromRpc()
@@ -164,7 +164,7 @@ export async function updateUnls(): Promise<void> {
   try {
     const lists = await getLists()
     log.info('Updating validator unls...')
-    for (const [name, list] of Object.entries(lists)) {
+    for (const [_name, list] of Object.entries(lists)) {
       // Get latest signing keys from manifests table
 
       const subquery = query('manifests')
