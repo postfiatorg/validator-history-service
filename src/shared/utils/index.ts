@@ -2,14 +2,13 @@ import axios, { AxiosRequestConfig } from 'axios'
 import { unixTimeToRippleTime } from 'xrpl'
 import { normalizeManifest } from 'xrpl-validator-domains'
 
-import { getNetworks, query } from '../database'
+import { getNetworks } from '../database'
 import { UNL, UNLBlob, UNLV2, UNLValidator } from '../types'
 
 import config from './config'
 import logger from './logger'
 
 const log = logger({ name: 'utils' })
-const HTTPS_PORT = 51234
 const IPV6_PREFIX = /^::ffff:/u
 
 /**
@@ -88,28 +87,8 @@ export function parseBlob(blob: string): UNLBlob {
 }
 
 /**
- * Get the network entry node's url for a validator.
- *
- * @param key - The public key of the validator.
- * @returns A promise that resolves to the network entry url string.
- */
-async function getNetworksEntryUrl(key: string): Promise<string | null> {
-  const networkDb = (await query('validators')
-    .select('networks')
-    .where('master_key', key)
-    .orWhere('signing_key', key)) as Array<{ networks: string }>
-  const network = networkDb[0]?.networks
-  if (network) {
-    const entry = (await query('networks')
-      .select('entry')
-      .where('id', network)) as Array<{ entry: string }>
-    return `https://${entry[0]?.entry}:${HTTPS_PORT}`
-  }
-  return null
-}
-
-/**
  * Fetches the manifest for the public key (master or signing) from rippled.
+ * Always uses the configured RPC admin server.
  *
  * @param key - The public key being queried.
  * @returns A promise that resolves the a hex string representation of the manifest.
@@ -118,10 +97,7 @@ async function getNetworksEntryUrl(key: string): Promise<string | null> {
 export async function fetchRpcManifest(
   key: string,
 ): Promise<string | undefined> {
-  const url = await getNetworksEntryUrl(key)
-  if (url === null) {
-    return undefined
-  }
+  const url = `https://${config.rippled_rpc_admin_server}`
   const data = JSON.stringify({
     method: 'manifest',
     params: [{ public_key: `${key}` }],
