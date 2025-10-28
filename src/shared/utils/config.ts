@@ -42,6 +42,10 @@ const port = getEnvironmentVariable(EnvironmentVariable.port)
 
 const addr = getEnvironmentVariable(EnvironmentVariable.addr)
 
+const network_id = getRequiredEnvironmentVariable(
+  EnvironmentVariable.network_id,
+)
+
 const config = {
   nodeEnv,
   db,
@@ -50,6 +54,7 @@ const config = {
   port,
   addr,
   mainnet_p2p_server,
+  network_id,
 }
 
 export default config

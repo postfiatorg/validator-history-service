@@ -11,7 +11,7 @@ interface Network {
 // The unls array is kept for backward compatibility but is no longer used for fetching
 const networks: Network[] = [
   {
-    id: 'test',
+    id: config.network_id,
     entry: config.mainnet_p2p_server,
     port: 2559,
     unls: ['rpc'], // Indicates validators are fetched from RPC
