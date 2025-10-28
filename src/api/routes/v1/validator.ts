@@ -233,8 +233,8 @@ async function findInDatabase(
       'ballot.reserve_base',
       'ballot.reserve_inc',
     ])
-    .where({ master_key: public_key })
-    .orWhere({ signing_key: public_key })
+    .where({ 'validators.master_key': public_key })
+    .orWhere({ 'validators.signing_key': public_key })
     .limit(1)) as dbResponse[]
 
   if (result.length === 0) {
