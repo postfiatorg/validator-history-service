@@ -98,7 +98,11 @@ export async function handleWsMessageSubscribeTypes(
 
     const validationNetwork =
       validationNetworkDb.get(validationData.validation_public_key) ??
-      validationData.networks
+      validationData.networks ??
+      networks
+
+    // Assign the network to the validation data
+    validationData.networks = validationNetwork
 
     // Get the fee for the network to be used in case the validator does not vote for a new fee.
     if (validationNetwork) {
