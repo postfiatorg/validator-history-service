@@ -258,9 +258,23 @@ async function updateManifestRevocations(): Promise<void> {
 async function updateRevocations(): Promise<void> {
   log.info('Updating revocations...')
   try {
+    // Copy revoked status from manifests table to validators table
     await db().raw(
       'UPDATE validators SET revoked = manifests.revoked FROM manifests WHERE validators.signing_key = manifests.signing_key',
     )
+
+    // Mark validators as revoked if their signing key doesn't match the latest manifest for their master_key
+    // This handles cases where old validators exist but their old manifest was never saved
+    await db().raw(`
+      UPDATE validators v SET revoked = true
+      WHERE v.master_key IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM manifests m
+        WHERE m.master_key = v.master_key
+        AND m.signing_key != v.signing_key
+        AND m.revoked = false
+      )
+    `)
   } catch (err) {
     log.error(`Error updating revocations`, err)
   }
