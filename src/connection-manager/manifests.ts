@@ -23,7 +23,7 @@ import logger from '../shared/utils/logger'
 import hard_dunl from './fixtures/unl-hard.json'
 
 const log = logger({ name: 'manifests' })
-const MANIFESTS_JOB_INTERVAL = 60 * 60 * 1000
+const MANIFESTS_JOB_INTERVAL = 5 * 60 * 1000 // 5 minutes
 let jobsStarted = false
 
 /**
@@ -216,6 +216,40 @@ async function updateValidatorMasterKeys(): Promise<void> {
 }
 
 /**
+ * Checks all manifests and marks old ones as revoked if a newer manifest exists
+ * for the same master_key.
+ *
+ * @returns Void.
+ */
+async function updateManifestRevocations(): Promise<void> {
+  log.info('Updating manifest revocations...')
+  try {
+    // Mark manifests as revoked if a newer manifest exists for the same master_key
+    await db().raw(`
+      UPDATE manifests SET revoked = true
+      WHERE EXISTS (
+        SELECT 1 FROM manifests m2
+        WHERE m2.master_key = manifests.master_key
+        AND m2.seq > manifests.seq
+      )
+    `)
+
+    // Mark manifests as not revoked if they are the latest
+    await db().raw(`
+      UPDATE manifests SET revoked = false
+      WHERE NOT EXISTS (
+        SELECT 1 FROM manifests m2
+        WHERE m2.master_key = manifests.master_key
+        AND m2.seq > manifests.seq
+      )
+    `)
+  } catch (err) {
+    log.error(`Error updating manifest revocations`, err)
+  }
+  log.info('Finished updating manifest revocations')
+}
+
+/**
  * Updates the revoked column of the validators table
  * Signing keys have been revoked when a manifest with a greater seq has been seen.
  *
@@ -234,7 +268,7 @@ async function updateRevocations(): Promise<void> {
 }
 
 /**
- * Deletes validators that are older than an hour.
+ * Deletes validators that are older than a week.
  *
  * @returns Void.
  */
@@ -248,6 +282,22 @@ async function purgeOldValidators(): Promise<void> {
     log.error(`Error purging old validators`, err)
   }
   log.info('Finished deleting old validators')
+}
+
+/**
+ * Deletes validators with revoked signing keys.
+ * This removes old signing keys when a validator rotates to a new key.
+ *
+ * @returns Void.
+ */
+async function purgeRevokedValidators(): Promise<void> {
+  log.info('Deleting revoked validators')
+  try {
+    await query('validators').where('revoked', '=', true).del()
+  } catch (err) {
+    log.error(`Error purging revoked validators`, err)
+  }
+  log.info('Finished deleting revoked validators')
 }
 
 /**
@@ -282,7 +332,9 @@ async function jobs(): Promise<void> {
   await updateValidatorDomainsFromManifests()
   await updateUnls()
   await updateValidatorMasterKeys()
+  await updateManifestRevocations()
   await updateRevocations()
+  await purgeRevokedValidators()
   await purgeOldValidators()
   await updateHardCodedUnls()
 }
