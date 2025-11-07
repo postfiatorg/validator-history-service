@@ -36,18 +36,27 @@ export async function handleManifest(
   manifest: Manifest | StreamManifest | string,
 ): Promise<void> {
   let verification
+  let normalized
+  try {
+    normalized = normalizeManifest(manifest)
+  } catch (err: unknown) {
+    log.error('Manifest could not be normalized', err)
+    return
+  }
+
+  log.info(
+    `Processing manifest for master_key: ${normalized.master_key}, signing_key: ${normalized.signing_key}, domain: ${normalized.domain ?? 'none'}`,
+  )
+
   try {
     verification = await verifyValidatorDomain(manifest)
-  } catch {
-    let normalized
-    try {
-      normalized = normalizeManifest(manifest)
-    } catch (err: unknown) {
-      log.error('Manifest could not be normalized', err)
-      return
-    }
-    log.warn(
-      `Domain verification failed for manifest (master key): ${normalized.master_key}`,
+    log.info(
+      `Domain verification result for ${normalized.master_key}: verified=${verification.verified}, verified_manifest_signature=${verification.verified_manifest_signature}, message="${verification.message}"`,
+    )
+  } catch (err: unknown) {
+    log.error(
+      `Domain verification exception for ${normalized.master_key} (domain: ${normalized.domain ?? 'none'})`,
+      err,
     )
     const dBManifest: DatabaseManifest = {
       domain_verified: false,
@@ -56,12 +65,20 @@ export async function handleManifest(
     await saveManifest(dBManifest)
     return
   }
+
   if (verification.verified_manifest_signature && verification.manifest) {
     const dBManifest: DatabaseManifest = {
       domain_verified: verification.verified,
       ...verification.manifest,
     }
+    log.info(
+      `Saving manifest for ${normalized.master_key}: domain_verified=${verification.verified}, domain=${dBManifest.domain ?? 'none'}`,
+    )
     await saveManifest(dBManifest)
+  } else {
+    log.warn(
+      `Manifest signature verification failed for ${normalized.master_key}, not saving to database`,
+    )
   }
 }
 
