@@ -165,22 +165,8 @@ export async function updateUnls(): Promise<void> {
     const lists = await getLists()
     log.info('Updating validator unls...')
     for (const [_name, list] of Object.entries(lists)) {
-      // Get latest signing keys from manifests table
-
-      const subquery = query('manifests')
-        .select('master_key')
-        .whereIn('signing_key', Array.from(list))
-
-      const keys: string[] = await query('manifests')
-        .distinctOn('master_key')
-        .select('signing_key')
-        .whereIn('master_key', subquery)
-        .orderBy(['master_key', { column: 'seq', order: 'desc' }])
-        .then(async (res) => {
-          return (res as Array<{ signing_key: string }>).map(
-            (idx: { signing_key: string }) => idx.signing_key,
-          )
-        })
+      // Use signing keys directly from the UNL blob
+      const keys: string[] = Array.from(list)
 
       // Mark validators as fetched from RPC instead of a domain
       const networkUNL = 'rpc'
