@@ -1,7 +1,5 @@
-import {
-  normalizeManifest,
-  verifyValidatorDomain,
-} from 'xrpl-validator-domains'
+import { normalizeManifest } from 'xrpl-validator-domains'
+import { verifyValidatorDomain } from '../shared/utils/domain-verification'
 
 import {
   saveManifest,
