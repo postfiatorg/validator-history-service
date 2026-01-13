@@ -14,6 +14,7 @@ import handleNetworks from './networks'
 import { handleNode, handleNodes, handleTopology } from './nodes'
 import handleUnl from './unl'
 import { handleValidator, handleValidators } from './validator'
+import handleValidatorBallot from './validator-ballot'
 import handleValidatorReport from './validator-report'
 
 const api = createRouter()
@@ -35,6 +36,7 @@ api.use('/network/topology', handleTopology)
 
 api.use('/network/validator/:publicKey/reports', handleValidatorReport)
 api.use('/network/validator/:publicKey/manifests', handleValidatorManifest)
+api.use('/network/validator/:publicKey/ballot', handleValidatorBallot)
 api.use('/network/validator/:publicKey', handleValidator)
 api.use('/network/validators/:param', handleValidators)
 api.use('/network/validators', handleValidators)

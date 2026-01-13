@@ -62,6 +62,11 @@ const info = {
       example: 'https://data.xrpl.org/v1/network/validator/{pubkey}/reports',
     },
     {
+      action: 'Get Validator Ballot (Amendment Votes)',
+      route: '/v1/network/validator/{pubkey}/ballot',
+      example: 'https://data.xrpl.org/v1/network/validator/{pubkey}/ballot',
+    },
+    {
       action: 'Get Daily Validator Report',
       route: '/v1/network/validator_reports',
       example: 'https://data.xrpl.org/v1/network/validator_reports',
