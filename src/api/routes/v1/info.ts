@@ -12,6 +12,11 @@ const info = {
       example: 'https://data.xrpl.org/v1/network/networks',
     },
     {
+      action: 'Get UNL Validators',
+      route: '/v1/network/unl',
+      example: 'https://data.xrpl.org/v1/network/unl',
+    },
+    {
       action: 'Get Topology Nodes',
       route: '/v1/network/topology/nodes',
       example: 'https://data.xrpl.org/v1/network/topology/nodes',

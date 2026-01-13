@@ -12,6 +12,7 @@ import handleHealth, { handleMonitoringMetrics } from './health'
 import handleValidatorManifest from './manifests'
 import handleNetworks from './networks'
 import { handleNode, handleNodes, handleTopology } from './nodes'
+import handleUnl from './unl'
 import { handleValidator, handleValidators } from './validator'
 import handleValidatorReport from './validator-report'
 
@@ -39,5 +40,6 @@ api.use('/network/validators/:param', handleValidators)
 api.use('/network/validators', handleValidators)
 
 api.use('/network/networks', handleNetworks)
+api.use('/network/unl', handleUnl)
 
 export default api
