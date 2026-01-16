@@ -7,6 +7,7 @@ import logger from '../shared/utils/logger'
 
 import Crawler from './crawl'
 import locate from './locate'
+import fetchPeerIpsViaRpc from './peers-rpc'
 
 const log = logger({ name: 'crawler-start' })
 const LOCATE_INTERVAL = 24 * 60 * 60 * 1000
@@ -35,14 +36,16 @@ async function crawl(): Promise<void> {
 async function start(): Promise<void> {
   await setupTables()
   await crawl()
+  await fetchPeerIpsViaRpc()
   void locate()
 }
 
 async function main(): Promise<void> {
   await start()
 
-  setInterval(() => {
-    void crawl()
+  setInterval(async () => {
+    await crawl()
+    await fetchPeerIpsViaRpc()
   }, CRAWL_INTERVAL)
 
   setInterval(() => {
