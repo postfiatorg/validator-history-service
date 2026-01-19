@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vhs-postgres
+    environment:
+      POSTGRES_USER: vhs_user
+      POSTGRES_PASSWORD: vhs_password
+      POSTGRES_DB: validator_history_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vhs_user -d validator_history_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vhs-network
+    restart: unless-stopped
+
+  crawler:
+    image: agtipft/validator-history-service:devnet-latest
+    container_name: vhs-crawler
+    command: ["node", "build/crawler/index.js"]
+    environment:
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_USER: vhs_user
+      DB_PASSWORD: vhs_password
+      DB_DATABASE: validator_history_db
+      ACQUIRE_CONNECTION_TIMEOUT: 120000
+      NODE_ENV: development
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
+      RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
+      NETWORK_ID: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vhs-network
+    restart: unless-stopped
+
+  connections:
+    image: agtipft/validator-history-service:devnet-latest
+    container_name: vhs-connections
+    command: ["node", "build/connection-manager/index.js"]
+    environment:
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_USER: vhs_user
+      DB_PASSWORD: vhs_password
+      DB_DATABASE: validator_history_db
+      ACQUIRE_CONNECTION_TIMEOUT: 120000
+      NODE_ENV: development
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
+      RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
+      NETWORK_ID: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vhs-network
+    restart: unless-stopped
+
+  api:
+    image: agtipft/validator-history-service:devnet-latest
+    container_name: vhs-api
+    command: ["node", "build/api/index.js"]
+    environment:
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_USER: vhs_user
+      DB_PASSWORD: vhs_password
+      DB_DATABASE: validator_history_db
+      ACQUIRE_CONNECTION_TIMEOUT: 120000
+      NODE_ENV: development
+      PORT: 3000
+      ADDR: 0.0.0.0
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
+      RIPPLED_RPC_ADMIN: rpc.devnet.postfiat.org:5006
+      NETWORK_ID: dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vhs-network
+    restart: unless-stopped
+
+networks:
+  vhs-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
