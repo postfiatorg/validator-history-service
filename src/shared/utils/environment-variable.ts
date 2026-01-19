@@ -15,7 +15,7 @@ export enum EnvironmentVariable {
   port = 'PORT',
   addr = 'ADDR',
   mainnet_p2p_server = 'MAINNET_P2P_ENTRY',
-  mainnet_unl = 'MAINNET_UNL',
+  network_id = 'NETWORK_ID',
 }
 
 /**
@@ -46,6 +46,7 @@ const requiredEnvironmentVariables = new Set([
   EnvironmentVariable.port,
   EnvironmentVariable.addr,
   EnvironmentVariable.mainnet_p2p_server,
+  EnvironmentVariable.network_id,
 ])
 
 /**

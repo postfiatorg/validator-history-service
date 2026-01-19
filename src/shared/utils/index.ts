@@ -2,13 +2,13 @@ import axios, { AxiosRequestConfig } from 'axios'
 import { unixTimeToRippleTime } from 'xrpl'
 import { normalizeManifest } from 'xrpl-validator-domains'
 
-import { getNetworks, query } from '../database'
+import { getNetworks } from '../database'
 import { UNL, UNLBlob, UNLV2, UNLValidator } from '../types'
 
+import config from './config'
 import logger from './logger'
 
 const log = logger({ name: 'utils' })
-const HTTPS_PORT = 51234
 const IPV6_PREFIX = /^::ffff:/u
 
 /**
@@ -87,28 +87,8 @@ export function parseBlob(blob: string): UNLBlob {
 }
 
 /**
- * Get the network entry node's url for a validator.
- *
- * @param key - The public key of the validator.
- * @returns A promise that resolves to the network entry url string.
- */
-async function getNetworksEntryUrl(key: string): Promise<string | null> {
-  const networkDb = (await query('validators')
-    .select('networks')
-    .where('master_key', key)
-    .orWhere('signing_key', key)) as Array<{ networks: string }>
-  const network = networkDb[0]?.networks
-  if (network) {
-    const entry = (await query('networks')
-      .select('entry')
-      .where('id', network)) as Array<{ entry: string }>
-    return `https://${entry[0]?.entry}:${HTTPS_PORT}`
-  }
-  return null
-}
-
-/**
  * Fetches the manifest for the public key (master or signing) from rippled.
+ * Always uses the configured RPC admin server.
  *
  * @param key - The public key being queried.
  * @returns A promise that resolves the a hex string representation of the manifest.
@@ -117,10 +97,7 @@ async function getNetworksEntryUrl(key: string): Promise<string | null> {
 export async function fetchRpcManifest(
   key: string,
 ): Promise<string | undefined> {
-  const url = await getNetworksEntryUrl(key)
-  if (url === null) {
-    return undefined
-  }
+  const url = `https://${config.rippled_rpc_admin_server}`
   const data = JSON.stringify({
     method: 'manifest',
     params: [{ public_key: `${key}` }],
@@ -152,6 +129,74 @@ export async function fetchRpcManifest(
 }
 
 /**
+ * Fetches the UNL validators directly from the rippled node using the 'validators' admin command.
+ *
+ * @returns A promise that resolves to a UNLBlob containing the validators from the node.
+ * @throws When the RPC request fails or returns invalid data.
+ */
+export async function fetchValidatorsFromRpc(): Promise<UNLBlob> {
+  const url = `https://${config.rippled_rpc_admin_server}`
+  const data = JSON.stringify({
+    method: 'validators',
+  })
+  const params: AxiosRequestConfig = {
+    method: 'post',
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data,
+  }
+
+  try {
+    const response = await axios(params)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- RPC response type not defined
+    const result = response.data.result
+    if (!result) {
+      throw new Error('No result in validators RPC response')
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- RPC response type not defined
+    const trustedValidatorKeys: string[] = result.trusted_validator_keys ?? []
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- RPC response type not defined
+    const publisherLists: Array<{ list?: string[]; expiration?: string }> = result.publisher_lists ?? []
+
+    // Get manifests for each trusted validator key
+    const validators: UNLValidator[] = []
+    for (const validatorKey of trustedValidatorKeys) {
+      const manifestHex = await fetchRpcManifest(validatorKey)
+      if (manifestHex) {
+        const manifestB64 = Buffer.from(manifestHex, 'hex').toString('base64')
+        validators.push({
+          validation_public_key: validatorKey,
+          manifest: manifestB64,
+        })
+      }
+    }
+
+    // Construct UNLBlob from the RPC response
+    const unlBlob: UNLBlob = {
+      sequence: 1, // RPC doesn't provide sequence, using default
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- RPC response type not defined
+      expiration: result.validation_quorum ?? 0,
+      validators,
+    }
+
+    // If we have publisher lists with expiration, use the first one
+    if (publisherLists.length > 0 && publisherLists[0].expiration) {
+      const expirationDate = new Date(publisherLists[0].expiration)
+      unlBlob.expiration = Math.floor(expirationDate.getTime() / 1000)
+    }
+
+    log.info(`Fetched ${validators.length} validators from rippled RPC`)
+    return unlBlob
+  } catch (err: unknown) {
+    log.error(`Error fetching validators from rippled RPC`, err)
+    return Promise.reject(err)
+  }
+}
+
+/**
  * Helper to convert UNLblob to set of validator signing keys.
  *
  * @param blob - The UNL blob to be converted.
@@ -173,6 +218,7 @@ function blobToValidators(blob: UNLBlob): Set<string> {
 
 /**
  * Returns core validator lists (mainnet, testnet, devnet).
+ * Fetches validators directly from the rippled node using the 'validators' RPC command.
  *
  * @returns An array of sets containing the signing keys of validators on each list.
  */
@@ -181,11 +227,8 @@ export async function getLists(): Promise<Record<string, Set<string>>> {
   const promises: Array<Promise<void>> = []
   const networks = await getNetworks()
   networks.forEach(async (network) => {
-    if (!network.unls[0]) {
-      return
-    }
     promises.push(
-      fetchValidatorList(network.unls[0]).then((blob) => {
+      fetchValidatorsFromRpc().then((blob) => {
         Object.assign(lists, {
           [network.id]: blobToValidators(blob),
         })
@@ -193,7 +236,7 @@ export async function getLists(): Promise<Record<string, Set<string>>> {
     )
   })
   await Promise.all(
-    // The error has already been logged in fetchValidatorList
+    // The error has already been logged in fetchValidatorsFromRpc
     promises.map(async (promise) => promise.catch(async (err: unknown) => err)),
   )
   return lists

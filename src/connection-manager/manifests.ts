@@ -1,7 +1,5 @@
-import {
-  normalizeManifest,
-  verifyValidatorDomain,
-} from 'xrpl-validator-domains'
+import { normalizeManifest } from 'xrpl-validator-domains'
+import { verifyValidatorDomain } from '../shared/utils/domain-verification'
 
 import {
   saveManifest,
@@ -17,26 +15,14 @@ import {
   UNLValidator,
   DatabaseManifest,
 } from '../shared/types'
-import { fetchValidatorList, fetchRpcManifest, getLists } from '../shared/utils'
+import { fetchValidatorsFromRpc, fetchRpcManifest, getLists } from '../shared/utils'
 import logger from '../shared/utils/logger'
 
 import hard_dunl from './fixtures/unl-hard.json'
 
 const log = logger({ name: 'manifests' })
-const MANIFESTS_JOB_INTERVAL = 60 * 60 * 1000
+const MANIFESTS_JOB_INTERVAL = 5 * 60 * 1000 // 5 minutes
 let jobsStarted = false
-
-/**
- * Get the first UNL in the list of UNLs for the network with name `networkName`.
- *
- * @param networkName - The name of the network.
- * @returns The first UNL in the list of UNLs for the network.
- */
-async function getFirstUNL(networkName: string): Promise<string> {
-  const networks = await getNetworks()
-  const network = networks.filter((ntwk) => ntwk.id === networkName)[0]
-  return network.unls[0]
-}
 
 /**
  * Performs Domain verification and saves the Manifest.
@@ -48,18 +34,27 @@ export async function handleManifest(
   manifest: Manifest | StreamManifest | string,
 ): Promise<void> {
   let verification
+  let normalized
+  try {
+    normalized = normalizeManifest(manifest)
+  } catch (err: unknown) {
+    log.error('Manifest could not be normalized', err)
+    return
+  }
+
+  log.info(
+    `Processing manifest for master_key: ${normalized.master_key}, signing_key: ${normalized.signing_key}, domain: ${normalized.domain ?? 'none'}`,
+  )
+
   try {
     verification = await verifyValidatorDomain(manifest)
-  } catch {
-    let normalized
-    try {
-      normalized = normalizeManifest(manifest)
-    } catch (err: unknown) {
-      log.error('Manifest could not be normalized', err)
-      return
-    }
-    log.warn(
-      `Domain verification failed for manifest (master key): ${normalized.master_key}`,
+    log.info(
+      `Domain verification result for ${normalized.master_key}: verified=${verification.verified}, verified_manifest_signature=${verification.verified_manifest_signature}, message="${verification.message}"`,
+    )
+  } catch (err: unknown) {
+    log.error(
+      `Domain verification exception for ${normalized.master_key} (domain: ${normalized.domain ?? 'none'})`,
+      err,
     )
     const dBManifest: DatabaseManifest = {
       domain_verified: false,
@@ -68,12 +63,20 @@ export async function handleManifest(
     await saveManifest(dBManifest)
     return
   }
+
   if (verification.verified_manifest_signature && verification.manifest) {
     const dBManifest: DatabaseManifest = {
       domain_verified: verification.verified,
       ...verification.manifest,
     }
+    log.info(
+      `Saving manifest for ${normalized.master_key}: domain_verified=${verification.verified}, domain=${dBManifest.domain ?? 'none'}`,
+    )
     await saveManifest(dBManifest)
+  } else {
+    log.warn(
+      `Manifest signature verification failed for ${normalized.master_key}, not saving to database`,
+    )
   }
 }
 
@@ -92,14 +95,15 @@ export async function updateUNLManifests(): Promise<void> {
 
 /**
  * Saves manifests from the UNL.
+ * Fetches validators directly from the rippled node using RPC.
  *
- * @param network - The network to update.
+ * @param _network - The network to update (unused, kept for compatibility).
  * @returns A promise that resolves to void once all UNL validators are saved.
  */
-async function updateUNLManifestNetwork(network: string): Promise<void> {
+async function updateUNLManifestNetwork(_network: string): Promise<void> {
   try {
-    log.info('Fetching UNL...')
-    const unl: UNLBlob = await fetchValidatorList(await getFirstUNL(network))
+    log.info('Fetching UNL from rippled RPC...')
+    const unl: UNLBlob = await fetchValidatorsFromRpc()
     const promises: Array<Promise<void>> = []
 
     unl.validators.forEach((validator: UNLValidator) => {
@@ -167,7 +171,7 @@ async function updateValidatorDomainsFromManifests(): Promise<void> {
 
 /**
  * Update the unl column if the validator is included in a validator list for a network.
- * The unl column contains the domain where the validator list is served.
+ * The unl column now stores 'rpc' to indicate validators are fetched from the rippled node.
  *
  * @returns A promise that resolves to void once unl column is updated for all applicable validators.
  */
@@ -175,25 +179,12 @@ export async function updateUnls(): Promise<void> {
   try {
     const lists = await getLists()
     log.info('Updating validator unls...')
-    for (const [name, list] of Object.entries(lists)) {
-      // Get latest signing keys from manifests table
+    for (const [_name, list] of Object.entries(lists)) {
+      // Use signing keys directly from the UNL blob
+      const keys: string[] = Array.from(list)
 
-      const subquery = query('manifests')
-        .select('master_key')
-        .whereIn('signing_key', Array.from(list))
-
-      const keys: string[] = await query('manifests')
-        .distinctOn('master_key')
-        .select('signing_key')
-        .whereIn('master_key', subquery)
-        .orderBy(['master_key', { column: 'seq', order: 'desc' }])
-        .then(async (res) => {
-          return (res as Array<{ signing_key: string }>).map(
-            (idx: { signing_key: string }) => idx.signing_key,
-          )
-        })
-
-      const networkUNL = await getFirstUNL(name)
+      // Mark validators as fetched from RPC instead of a domain
+      const networkUNL = 'rpc'
       await query('validators')
         .whereIn('signing_key', keys)
         .update({ unl: networkUNL })
@@ -226,6 +217,40 @@ async function updateValidatorMasterKeys(): Promise<void> {
 }
 
 /**
+ * Checks all manifests and marks old ones as revoked if a newer manifest exists
+ * for the same master_key.
+ *
+ * @returns Void.
+ */
+async function updateManifestRevocations(): Promise<void> {
+  log.info('Updating manifest revocations...')
+  try {
+    // Mark manifests as revoked if a newer manifest exists for the same master_key
+    await db().raw(`
+      UPDATE manifests SET revoked = true
+      WHERE EXISTS (
+        SELECT 1 FROM manifests m2
+        WHERE m2.master_key = manifests.master_key
+        AND m2.seq > manifests.seq
+      )
+    `)
+
+    // Mark manifests as not revoked if they are the latest
+    await db().raw(`
+      UPDATE manifests SET revoked = false
+      WHERE NOT EXISTS (
+        SELECT 1 FROM manifests m2
+        WHERE m2.master_key = manifests.master_key
+        AND m2.seq > manifests.seq
+      )
+    `)
+  } catch (err) {
+    log.error(`Error updating manifest revocations`, err)
+  }
+  log.info('Finished updating manifest revocations')
+}
+
+/**
  * Updates the revoked column of the validators table
  * Signing keys have been revoked when a manifest with a greater seq has been seen.
  *
@@ -234,9 +259,23 @@ async function updateValidatorMasterKeys(): Promise<void> {
 async function updateRevocations(): Promise<void> {
   log.info('Updating revocations...')
   try {
+    // Copy revoked status from manifests table to validators table
     await db().raw(
       'UPDATE validators SET revoked = manifests.revoked FROM manifests WHERE validators.signing_key = manifests.signing_key',
     )
+
+    // Mark validators as revoked if their signing key doesn't match the latest manifest for their master_key
+    // This handles cases where old validators exist but their old manifest was never saved
+    await db().raw(`
+      UPDATE validators v SET revoked = true
+      WHERE v.master_key IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM manifests m
+        WHERE m.master_key = v.master_key
+        AND m.signing_key != v.signing_key
+        AND m.revoked = false
+      )
+    `)
   } catch (err) {
     log.error(`Error updating revocations`, err)
   }
@@ -244,7 +283,7 @@ async function updateRevocations(): Promise<void> {
 }
 
 /**
- * Deletes validators that are older than an hour.
+ * Deletes validators that are older than a week.
  *
  * @returns Void.
  */
@@ -258,6 +297,22 @@ async function purgeOldValidators(): Promise<void> {
     log.error(`Error purging old validators`, err)
   }
   log.info('Finished deleting old validators')
+}
+
+/**
+ * Deletes validators with revoked signing keys.
+ * This removes old signing keys when a validator rotates to a new key.
+ *
+ * @returns Void.
+ */
+async function purgeRevokedValidators(): Promise<void> {
+  log.info('Deleting revoked validators')
+  try {
+    await query('validators').where('revoked', '=', true).del()
+  } catch (err) {
+    log.error(`Error purging revoked validators`, err)
+  }
+  log.info('Finished deleting revoked validators')
 }
 
 /**
@@ -292,7 +347,9 @@ async function jobs(): Promise<void> {
   await updateValidatorDomainsFromManifests()
   await updateUnls()
   await updateValidatorMasterKeys()
+  await updateManifestRevocations()
   await updateRevocations()
+  await purgeRevokedValidators()
   await purgeOldValidators()
   await updateHardCodedUnls()
 }

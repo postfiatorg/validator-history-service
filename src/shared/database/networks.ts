@@ -7,26 +7,14 @@ interface Network {
   unls: string[]
 }
 
-// put the UNL you want to prioritize at the front
-const mainMainnetUnls = ['postfiat.org/testnet_vl.json']
-let mainnetUnls: string[]
-if (config.mainnet_unl == null) {
-  mainnetUnls = mainMainnetUnls
-} else {
-  mainnetUnls = [config.mainnet_unl]
-  mainMainnetUnls.forEach((unl) => {
-    if (unl !== config.mainnet_unl) {
-      mainnetUnls.push(unl)
-    }
-  })
-}
-
+// UNL validators are now fetched directly from the rippled node via RPC
+// The unls array is kept for backward compatibility but is no longer used for fetching
 const networks: Network[] = [
   {
-    id: 'test',
+    id: config.network_id,
     entry: config.mainnet_p2p_server,
     port: 2559,
-    unls: mainnetUnls,
+    unls: ['rpc'], // Indicates validators are fetched from RPC
   },
 ]
 

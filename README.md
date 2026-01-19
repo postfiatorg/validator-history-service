@@ -33,7 +33,7 @@ Alternatively, update your `.bashrc` or `.zshrc` to export the environment varia
 Here are some example values for some environment variables:
 
 - `MAINNET_P2P_SERVER`: your mainnet peer-to-peer rippled node [FQDN](https://en.wikipedia.org/wiki/Fully_qualified_domain_name)
-- `MAINNET_UNL`: a mainnet validator domain which hosts a UNL, for example `MAINNET_UNL=vl.ripple.com`
+- `RIPPLED_RPC_ADMIN`: your rippled node with admin API access. UNL validators are fetched directly from this node using the `validators` RPC command instead of from a separate UNL domain
 
 ## Run
 
