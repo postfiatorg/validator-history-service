@@ -21,14 +21,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ripple/validator-history-service.git"
+    "url": "git+https://github.com/postfiatorg/validator-history-service.git"
   },
   "author": "Mayur Bhandary, Nathan Nichols",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ripple/validator-history-service/issues"
+    "url": "https://github.com/postfiatorg/validator-history-service/issues"
   },
-  "homepage": "https://github.com/ripple/validator-history-service#readme",
+  "homepage": "https://github.com/postfiatorg/validator-history-service#readme",
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/express": "4.17.21",
