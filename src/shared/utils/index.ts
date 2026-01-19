@@ -158,8 +158,10 @@ export async function fetchValidatorsFromRpc(): Promise<UNLBlob> {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- RPC response type not defined
     const trustedValidatorKeys: string[] = result.trusted_validator_keys ?? []
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- RPC response type not defined
-    const publisherLists: Array<{ list?: string[]; expiration?: string }> = result.publisher_lists ?? []
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- RPC response type not defined
+    const publisherLists: Array<{ list?: string[]; expiration?: string }> =
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- RPC response type not defined
+      result.publisher_lists ?? []
 
     // Get manifests for each trusted validator key
     const validators: UNLValidator[] = []
@@ -270,7 +272,7 @@ export function overlaps(
  * @param target -- The target rippled version.
  * @returns True if source is earlier than target, false otherwise.
  */
-// eslint-disable-next-line max-statements, max-lines-per-function, complexity -- Disabled for this util function.
+// eslint-disable-next-line complexity -- Disabled for this util function.
 export function isEarlierVersion(
   source: string | null | undefined,
   target: string | null | undefined,

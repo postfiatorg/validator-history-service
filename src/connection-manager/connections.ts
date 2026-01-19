@@ -1,4 +1,3 @@
-/* eslint-disable max-lines-per-function  -- Disable for this file with complex websocket rules. */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- Disable since websocket messages are indeterministic */
 
 import WebSocket from 'ws'
