@@ -132,12 +132,14 @@ docker compose up -d
 
 ## Step 4: Configure DNS
 
-Add A records in your DNS provider:
+Add A records in your DNS provider (e.g., Squarespace, Cloudflare):
 
-| Subdomain | Type | Value |
+| Host/Name | Type | Value |
 |-----------|------|-------|
-| `vhs.devnet.postfiat.org` | A | `<DEVNET_VPS_IP>` |
-| `vhs.testnet.postfiat.org` | A | `<TESTNET_VPS_IP>` |
+| `vhs.devnet` | A | `<DEVNET_VPS_IP>` |
+| `vhs.testnet` | A | `<TESTNET_VPS_IP>` |
+
+Your DNS provider appends your domain automatically, so `vhs.devnet` becomes `vhs.devnet.postfiat.org`.
 
 ## Step 5: Verify Deployment
 
