@@ -39,3 +39,4 @@ jobs:
           DB_DATABASE: validator_history_db
           RIPPLED_RPC_ADMIN: 'https://xrpl.ws/'
           MAINNET_P2P_ENTRY: 'test.example.com'
+          NETWORK_ID: test
