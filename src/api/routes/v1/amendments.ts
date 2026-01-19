@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- Disable for this file. */
 import { Request, Response } from 'express'
 
 import { getNetworks, query } from '../../../shared/database'
@@ -233,7 +232,7 @@ async function calculateConsensus(
  * @param id - The network id.
  * @returns List of amendments in voting.
  */
-// eslint-disable-next-line max-lines-per-function, max-statements -- Disabled for this function.
+
 async function getVotingAmendments(id: string): Promise<AmendmentInVoting[]> {
   const inNetworks = (await query('ballot')
     .leftJoin('validators', 'ballot.signing_key', 'validators.signing_key')

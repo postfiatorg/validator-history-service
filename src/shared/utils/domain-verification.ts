@@ -1,7 +1,7 @@
 import axios from 'axios'
-import toml from 'toml'
 import { decodeNodePublic } from 'ripple-address-codec'
 import { verify } from 'ripple-keypairs'
+import toml from 'toml'
 import {
   normalizeManifest,
   Manifest,
@@ -52,6 +52,7 @@ async function fetchToml(domain: string): Promise<TomlData> {
  * @param manifest - The signed manifest that contains the validator's domain.
  * @returns A verification result with verified status, manifest signature status, and message.
  */
+// eslint-disable-next-line import/prefer-default-export -- Named export preferred for clarity
 export async function verifyValidatorDomain(
   manifest: string | ManifestParsed | StreamManifest | Manifest,
 ): Promise<VerificationResult> {
@@ -95,7 +96,9 @@ export async function verifyValidatorDomain(
     return {
       verified: false,
       verified_manifest_signature: true,
-      message: `Failed to fetch TOML file from ${domain}: ${err instanceof Error ? err.message : String(err)}`,
+      message: `Failed to fetch TOML file from ${domain}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
       manifest: normalizedManifest,
     }
   }

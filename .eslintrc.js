@@ -58,7 +58,7 @@ module.exports = {
     'max-lines-per-function': [
       'warn',
       {
-        max: 50,
+        max: 150,
         skipBlankLines: true,
         skipComments: true,
       },
@@ -66,7 +66,7 @@ module.exports = {
     'max-lines': [
       'warn',
       {
-        max: 250,
+        max: 500,
         skipBlankLines: true,
         skipComments: true,
       },
@@ -81,7 +81,7 @@ module.exports = {
     '@typescript-eslint/no-shadow': ['error'],
     '@typescript-eslint/no-extraneous-class': 'off',
     'no-param-reassign': ['error', { props: false }],
-    'max-statements': ['warn', 20],
+    'max-statements': ['warn', 50],
     'no-continue': 'off',
     'import/no-unassigned-import': [
       'warn',

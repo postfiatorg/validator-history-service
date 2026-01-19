@@ -1,5 +1,4 @@
 import { normalizeManifest } from 'xrpl-validator-domains'
-import { verifyValidatorDomain } from '../shared/utils/domain-verification'
 
 import {
   saveManifest,
@@ -15,7 +14,12 @@ import {
   UNLValidator,
   DatabaseManifest,
 } from '../shared/types'
-import { fetchValidatorsFromRpc, fetchRpcManifest, getLists } from '../shared/utils'
+import {
+  fetchValidatorsFromRpc,
+  fetchRpcManifest,
+  getLists,
+} from '../shared/utils'
+import { verifyValidatorDomain } from '../shared/utils/domain-verification'
 import logger from '../shared/utils/logger'
 
 import hard_dunl from './fixtures/unl-hard.json'
@@ -43,7 +47,11 @@ export async function handleManifest(
   }
 
   log.info(
-    `Processing manifest for master_key: ${normalized.master_key}, signing_key: ${normalized.signing_key}, domain: ${normalized.domain ?? 'none'}`,
+    `Processing manifest for master_key: ${
+      normalized.master_key
+    }, signing_key: ${normalized.signing_key ?? 'unknown'}, domain: ${
+      normalized.domain ?? 'none'
+    }`,
   )
 
   try {
@@ -53,7 +61,9 @@ export async function handleManifest(
     )
   } catch (err: unknown) {
     log.error(
-      `Domain verification exception for ${normalized.master_key} (domain: ${normalized.domain ?? 'none'})`,
+      `Domain verification exception for ${normalized.master_key} (domain: ${
+        normalized.domain ?? 'none'
+      })`,
       err,
     )
     const dBManifest: DatabaseManifest = {
@@ -70,7 +80,9 @@ export async function handleManifest(
       ...verification.manifest,
     }
     log.info(
-      `Saving manifest for ${normalized.master_key}: domain_verified=${verification.verified}, domain=${dBManifest.domain ?? 'none'}`,
+      `Saving manifest for ${normalized.master_key}: domain_verified=${
+        verification.verified
+      }, domain=${dBManifest.domain ?? 'none'}`,
     )
     await saveManifest(dBManifest)
   } else {
