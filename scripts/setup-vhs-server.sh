@@ -32,9 +32,12 @@ if command -v ufw &> /dev/null; then
 fi
 
 echo ""
-echo "Setup complete!"
+echo "=========================================="
+echo "  Setup complete!"
+echo "=========================================="
 echo ""
-echo "Next steps:"
-echo "1. Copy docker-compose.yml to /opt/vhs/"
-echo "2. cd /opt/vhs && docker compose up -d"
-echo "3. Verify with: curl localhost:3000/v1/health"
+echo "Exit this server and continue with Step 3"
+echo "in docs/DEPLOYMENT.md to copy the docker-compose"
+echo "file and start the services."
+echo ""
+echo "Or see: https://github.com/postfiatorg/validator-history-service/blob/main/docs/DEPLOYMENT.md"
