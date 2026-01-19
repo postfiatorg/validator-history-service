@@ -1,72 +1,101 @@
-# Validator History Service <!-- omit in toc -->
+# PostFiat Validator History Service
 
-The Validator History Service (VHS) is a service for ingesting, aggregating, storing, and disbursing node- and validation-related data.
+[![Node.js CI](https://github.com/postfiatorg/validator-history-service/actions/workflows/node.js.yml/badge.svg)](https://github.com/postfiatorg/validator-history-service/actions/workflows/node.js.yml)
 
-- [Installation](#installation)
-  - [Install VHS globally](#install-vhs-globally)
-  - [Database](#database)
-  - [Environment variables](#environment-variables)
-- [Run](#run)
-  - [API inspection](#api-inspection)
-- [Contributing](#contributing)
+Service for ingesting, aggregating, storing, and disbursing validator and node data for PostFiat networks.
 
-## Installation
+Fork of [Ripple Validator History Service](https://github.com/ripple/validator-history-service) adapted for PostFiat. See [docs/POSTFIAT.md](docs/POSTFIAT.md) for differences.
 
-### Install VHS globally
+## Quick Start
 
-To install the Validator History Service globally on your computer, run
+### Docker (Recommended)
 
 ```bash
-npm i -g validator-history-service
+# Clone repository
+git clone https://github.com/postfiatorg/validator-history-service.git
+cd validator-history-service
+
+# Start all services (devnet)
+docker compose -f scripts/docker-compose.devnet.yml up -d
+
+# Check status
+docker ps
+curl localhost:3000/v1/health
 ```
 
-### Database
-
-The Validator History Service only supports Postgres. You'll need to create a database, but the Validator History Service will create the tables and schema for you.
-
-### Environment variables
-
-Create a `.env` file with the same environment variable as [.env.example](.env.example) where you want to run the Validator History Service.
-
-Alternatively, update your `.bashrc` or `.zshrc` to export the environment variables.
-
-Here are some example values for some environment variables:
-
-- `MAINNET_P2P_SERVER`: your mainnet peer-to-peer rippled node [FQDN](https://en.wikipedia.org/wiki/Fully_qualified_domain_name)
-- `RIPPLED_RPC_ADMIN`: your rippled node with admin API access. UNL validators are fetched directly from this node using the `validators` RPC command instead of from a separate UNL domain
-
-## Run
-
-The Validator History Service runs on HTTP on port 3000.
-
-After installation, you have access to the `validatorhistoryservice` command globally.
-
-Run `validatorhistoryservice` with `--api` to launch the API server:
+### Local Development
 
 ```bash
-validatorhistoryservice --api
+# Install dependencies
+npm ci
+
+# Copy environment file
+cp .env.devnet .env
+
+# Start PostgreSQL (via Docker or local install)
+docker run -d --name vhs-postgres \
+  -e POSTGRES_USER=vhs_user \
+  -e POSTGRES_PASSWORD=vhs_password \
+  -e POSTGRES_DB=validator_history_db \
+  -p 5432:5432 postgres:16-alpine
+
+# Build
+npm run build
+
+# Run services (in separate terminals)
+npm run startApiDev
+npm run startCrawlerDev
+npm run startConnectionsDev
 ```
 
-Run `validatorhistoryservice` with `--connections` to launch the connection manager:
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DB_HOST` | PostgreSQL host | `localhost` |
+| `DB_USER` | Database user | `vhs_user` |
+| `DB_PASSWORD` | Database password | `vhs_password` |
+| `DB_DATABASE` | Database name | `validator_history_db` |
+| `MAINNET_P2P_ENTRY` | Network entry point for crawler | `rpc.devnet.postfiat.org` |
+| `RIPPLED_RPC_ADMIN` | Rippled admin RPC endpoint | `rpc.devnet.postfiat.org:5006` |
+| `NETWORK_ID` | Network identifier | `dev`, `test`, `main` |
+| `MAXMIND_USER` | MaxMind account (optional) | - |
+| `MAXMIND_KEY` | MaxMind license key (optional) | - |
+
+Pre-configured environment files: `.env.devnet`, `.env.testnet`, `.env.mainnet`
+
+## API
+
+The API runs on port 3000 by default.
 
 ```bash
-validatorhistoryservice --connections
+# Health check
+curl localhost:3000/v1/health
+
+# List validators
+curl localhost:3000/v1/validators
+
+# Network topology
+curl localhost:3000/v1/network/topology
 ```
 
-Run `validatorhistoryservice` with `--crawler` to launch the network crawler:
+## Branch Strategy
 
-```bash
-validatorhistoryservice --crawler
-```
+| Branch | Purpose | Auto-Deploy |
+|--------|---------|-------------|
+| `main` | Development and PRs | - |
+| `devnet` | Devnet releases | → devnet VPS |
+| `testnet` | Testnet releases | → testnet VPS |
 
-### API inspection
+Merge to `devnet` or `testnet` to trigger deployment.
 
-Once the service and API are running, you may inspect the API by issuing any HTTP request to port 3000:
+## Documentation
 
-```bash
-curl localhost:3000
-```
+- [Architecture](ARCHITECTURE.md) - System design and components
+- [PostFiat Specifics](docs/POSTFIAT.md) - Network details and upstream differences
+- [Deployment](docs/DEPLOYMENT.md) - Vultr VPS deployment guide
+- [Contributing](CONTRIBUTING.md) - Development guidelines
 
-## Contributing
+## License
 
-Please follow [this link](CONTRIBUTING.md)
+ISC
