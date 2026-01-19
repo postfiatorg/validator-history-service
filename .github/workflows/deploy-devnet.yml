@@ -1,0 +1,86 @@
+name: Deploy Devnet
+
+on:
+  push:
+    branches: [devnet]
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: agtipft/validator-history-service
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vhs_user
+          POSTGRES_PASSWORD: vhs_password
+          POSTGRES_DB: validator_history_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint:ci
+      - run: npm run build
+      - run: npm test
+        env:
+          DB_HOST: localhost
+          DB_USER: vhs_user
+          DB_PASSWORD: vhs_password
+          DB_DATABASE: validator_history_db
+          RIPPLED_RPC_ADMIN: 'https://xrpl.ws/'
+          MAINNET_P2P_ENTRY: 'test.example.com'
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          build-args: |
+            ENVIRONMENT=devnet
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:devnet-latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Vultr
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VULTR_DEVNET_HOST }}
+          username: ${{ secrets.VULTR_SSH_USER }}
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          script: |
+            cd /opt/vhs
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
