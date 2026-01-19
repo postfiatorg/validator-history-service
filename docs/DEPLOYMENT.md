@@ -193,6 +193,43 @@ docker compose pull
 docker compose up -d
 ```
 
+## Resetting VHS (Validator Redeployments)
+
+When validators are destroyed and redeployed with new keys, VHS will see them as new validators while old data persists. For devnet and testnet, it's cleanest to reset VHS to start fresh.
+
+**On the VPS:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/postfiatorg/validator-history-service/main/scripts/reset-vhs.sh | bash
+```
+
+This script:
+1. Stops all containers
+2. Deletes the database (wipes all historical data)
+3. Pulls latest images
+4. Restarts services
+5. Waits for health check
+
+**From another workflow (e.g., validator deployment):**
+
+```yaml
+- name: Reset VHS
+  uses: appleboy/ssh-action@v1.0.3
+  with:
+    # Use VULTR_DEVNET_HOST for devnet, VULTR_TESTNET_HOST for testnet
+    host: ${{ secrets.VULTR_DEVNET_HOST }}
+    username: root
+    key: ${{ secrets.VULTR_SSH_KEY }}
+    script: |
+      curl -fsSL https://raw.githubusercontent.com/postfiatorg/validator-history-service/main/scripts/reset-vhs.sh | bash
+```
+
+**Order of operations for validator redeployment:**
+1. Destroy old validators
+2. Reset VHS (clears old data)
+3. Deploy new validators
+4. VHS automatically picks up new network
+
 ## Troubleshooting
 
 ### Containers not starting
