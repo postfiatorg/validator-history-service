@@ -5,8 +5,8 @@
   "main": "./build/index.js",
   "scripts": {
     "build": "tsc --build tsconfig.build.json",
-    "lint": "eslint . --ext .ts --max-warnings 0 --fix",
-    "lint:ci": "eslint . --ext .ts --max-warnings 0",
+    "lint": "eslint . --ext .ts --fix",
+    "lint:ci": "eslint . --ext .ts",
     "startCrawlerDev": "ts-node-dev --transpile-only ./src/crawler/index.ts | ./node_modules/.bin/bunyan ",
     "startApiDev": "ts-node-dev --transpile-only ./src/api/index.ts | ./node_modules/.bin/bunyan",
     "startConnectionsDev": "ts-node-dev --transpile-only ./src/connection-manager/index.ts | ./node_modules/.bin/bunyan",
@@ -68,6 +68,8 @@
     "nconf": "^0.12.0",
     "pg": "8.12.0",
     "ripple-address-codec": "^5.0.0",
+    "ripple-keypairs": "^2.0.0",
+    "toml": "^3.0.0",
     "ws": "^8.13.0",
     "xrpl": "^4.2.5",
     "xrpl-validator-domains": "0.1.0"
