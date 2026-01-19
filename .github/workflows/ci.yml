@@ -1,19 +1,12 @@
-name: Node.js CI
+name: CI
 
 on:
-  push:
-    branches: [main, devnet, testnet]
   pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
     services:
       postgres:
         image: postgres:16-alpine
@@ -28,13 +21,12 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20'
           cache: 'npm'
       - run: npm ci
       - run: npm run lint:ci
