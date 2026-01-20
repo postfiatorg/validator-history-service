@@ -76,6 +76,30 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync docker-compose file
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VULTR_TESTNET_HOST }}
+          username: ${{ secrets.VULTR_SSH_USER }}
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          source: scripts/docker-compose.testnet.yml
+          target: /opt/vhs/
+          strip_components: 1
+          overwrite: true
+
+      - name: Sync monitoring configs
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VULTR_TESTNET_HOST }}
+          username: ${{ secrets.VULTR_SSH_USER }}
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          source: scripts/monitoring
+          target: /opt/vhs/
+          strip_components: 1
+          overwrite: true
+
       - name: Deploy to Vultr
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -84,6 +108,7 @@ jobs:
           key: ${{ secrets.VULTR_SSH_KEY }}
           script: |
             cd /opt/vhs
+            mv docker-compose.testnet.yml docker-compose.yml
             docker compose pull
             docker compose up -d
             docker image prune -f

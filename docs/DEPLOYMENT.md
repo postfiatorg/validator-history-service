@@ -8,7 +8,7 @@ This guide covers deploying the Validator History Service to a Vultr VPS for Pos
 ┌─────────────────────────────────────────────────────────────────┐
 │                     ONE-TIME SETUP (manual)                     │
 │                                                                 │
-│   Create VPS → Install Docker → Copy docker-compose → DNS       │
+│       Create VPS → Install Docker → Configure DNS               │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -16,13 +16,13 @@ This guide covers deploying the Validator History Service to a Vultr VPS for Pos
 ┌─────────────────────────────────────────────────────────────────┐
 │                  ONGOING UPDATES (automated)                    │
 │                                                                 │
-│   Push to devnet branch  →  deploys to devnet VPS               │
-│   Push to testnet branch →  deploys to testnet VPS              │
+│   Push to devnet branch  →  syncs configs → deploys to VPS      │
+│   Push to testnet branch →  syncs configs → deploys to VPS      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Steps 1-5 below are done once per server.** After that, GitHub Actions workflows automatically deploy new versions whenever code is pushed to the `devnet` or `testnet` branches.
+**Steps 1-4 below are done once per server.** After that, GitHub Actions workflows automatically sync config files and deploy new versions whenever code is pushed to the `devnet` or `testnet` branches.
 
 ## Branch Strategy
 
@@ -108,29 +108,7 @@ After the script completes, **log out** of the VPS:
 exit
 ```
 
-## Step 3: Deploy VHS
-
-**From your local machine** (in the cloned repository directory), copy the docker-compose file to the VPS:
-
-**For Devnet:**
-```bash
-scp scripts/docker-compose.devnet.yml root@<VPS_IP>:/opt/vhs/docker-compose.yml
-```
-
-**For Testnet:**
-```bash
-scp scripts/docker-compose.testnet.yml root@<VPS_IP>:/opt/vhs/docker-compose.yml
-```
-
-**SSH back into the VPS** and start the services:
-
-```bash
-ssh root@<VPS_IP>
-cd /opt/vhs
-docker compose up -d
-```
-
-## Step 4: Configure DNS
+## Step 3: Configure DNS
 
 Add A records in your DNS provider (e.g., Squarespace, Cloudflare):
 
@@ -141,6 +119,22 @@ Add A records in your DNS provider (e.g., Squarespace, Cloudflare):
 
 Your DNS provider appends your domain automatically, so `vhs.devnet` becomes `vhs.devnet.postfiat.org`.
 
+## Step 4: Trigger Initial Deploy
+
+The CI/CD workflow will sync all config files and start services. Trigger it by pushing to the appropriate branch:
+
+```bash
+# For devnet
+git checkout devnet
+git push origin devnet
+
+# For testnet
+git checkout testnet
+git push origin testnet
+```
+
+Or trigger manually via GitHub Actions → Deploy Devnet/Testnet → Run workflow.
+
 ## Step 5: Verify Deployment
 
 Check containers are running:
@@ -149,7 +143,7 @@ Check containers are running:
 docker ps
 ```
 
-Expected output shows 4 containers: `vhs-postgres`, `vhs-crawler`, `vhs-connections`, `vhs-api`
+Expected output shows 5 containers: `vhs-postgres`, `vhs-crawler`, `vhs-connections`, `vhs-api`, `vhs-promtail`
 
 Test API health:
 
@@ -165,7 +159,31 @@ curl http://vhs.devnet.postfiat.org:3000/v1/health
 
 ## Monitoring
 
-View logs:
+### Centralized Logging
+
+Both devnet and testnet deployments include Promtail, which sends logs to their respective centralized monitoring instances.
+
+| Environment | Loki URL | Grafana URL |
+|-------------|----------|-------------|
+| Devnet | `http://infra-monitoring.devnet.postfiat.org:3100` | `http://infra-monitoring.devnet.postfiat.org:3001` |
+| Testnet | `http://infra-monitoring.testnet.postfiat.org:3100` | `http://infra-monitoring.testnet.postfiat.org:3001` |
+
+**Loki URL Configuration:**
+
+To override the default Loki URL:
+
+```bash
+export LOKI_URL=http://your-loki-host:3100
+docker compose up -d
+```
+
+**Accessing Logs:**
+
+View VHS logs in the centralized Grafana dashboard. See the [infra-monitoring](https://github.com/postfiatorg/infra-monitoring) repo for details.
+
+### Command Line Logs
+
+View logs directly via Docker:
 
 ```bash
 # All services
@@ -177,7 +195,7 @@ docker logs -f vhs-crawler
 docker logs -f vhs-connections
 ```
 
-Check database:
+### Database Access
 
 ```bash
 docker exec -it vhs-postgres psql -U vhs_user -d validator_history_db
@@ -257,8 +275,12 @@ After initial setup, you don't need to touch the server manually. GitHub Actions
 
 | Trigger | Workflow | What happens |
 |---------|----------|--------------|
-| Push to `devnet` | `deploy-devnet.yml` | Tests → Builds image → Pushes to Docker Hub → SSHs to devnet VPS → Pulls new image → Restarts containers |
-| Push to `testnet` | `deploy-testnet.yml` | Tests → Builds image → Pushes to Docker Hub → SSHs to testnet VPS → Pulls new image → Restarts containers |
+| Push to `devnet` | `deploy-devnet.yml` | Tests → Builds image → Pushes to Docker Hub → Syncs configs → Restarts containers |
+| Push to `testnet` | `deploy-testnet.yml` | Tests → Builds image → Pushes to Docker Hub → Syncs configs → Restarts containers |
+
+**What gets synced automatically:**
+- `scripts/docker-compose.*.yml` → `/opt/vhs/docker-compose.yml`
+- `scripts/monitoring/` → `/opt/vhs/monitoring/`
 
 To deploy, merge your changes to the appropriate branch:
 
