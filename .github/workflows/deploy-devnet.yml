@@ -108,5 +108,5 @@ jobs:
             cd /opt/vhs
             mv docker-compose.devnet.yml docker-compose.yml
             docker compose pull
-            docker compose up -d
+            docker compose up -d --force-recreate
             docker image prune -f
