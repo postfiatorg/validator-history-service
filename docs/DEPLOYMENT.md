@@ -168,15 +168,6 @@ Both devnet and testnet deployments include Promtail, which sends logs to their 
 | Devnet | `http://infra-monitoring.devnet.postfiat.org:3100` | `http://infra-monitoring.devnet.postfiat.org:3001` |
 | Testnet | `http://infra-monitoring.testnet.postfiat.org:3100` | `http://infra-monitoring.testnet.postfiat.org:3001` |
 
-**Loki URL Configuration:**
-
-To override the default Loki URL:
-
-```bash
-export LOKI_URL=http://your-loki-host:3100
-docker compose up -d
-```
-
 **Accessing Logs:**
 
 View VHS logs in the centralized Grafana dashboard. See the [infra-monitoring](https://github.com/postfiatorg/infra-monitoring) repo for details.

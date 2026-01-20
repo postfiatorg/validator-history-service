@@ -96,9 +96,9 @@ services:
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
-    command: -config.file=/etc/promtail/config.yml
-    environment:
-      - LOKI_URL=${LOKI_URL:-http://infra-monitoring.testnet.postfiat.org:3100}
+    command:
+      - -config.file=/etc/promtail/config.yml
+      - -client.url=http://infra-monitoring.testnet.postfiat.org:3100/loki/api/v1/push
     networks:
       - vhs-network
     restart: unless-stopped
