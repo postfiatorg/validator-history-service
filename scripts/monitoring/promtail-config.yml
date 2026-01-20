@@ -25,9 +25,8 @@ scrape_configs:
         target_label: 'container_name'
       - source_labels: ['__meta_docker_container_log_stream']
         target_label: 'stream'
-    static_configs:
-      - labels:
-          service_type: vhs
+      - target_label: 'service_type'
+        replacement: 'vhs'
     pipeline_stages:
       - json:
           expressions:
