@@ -90,7 +90,7 @@ services:
     restart: unless-stopped
 
   promtail:
-    image: grafana/promtail:2.9.0
+    image: grafana/promtail:3.0.0
     container_name: vhs-promtail
     volumes:
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
