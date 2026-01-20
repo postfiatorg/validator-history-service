@@ -105,3 +105,7 @@ node_modules
 
 # Mac-specific
 .DS_Store
+
+# Claude Code
+.claude/
+CLAUDE.md
