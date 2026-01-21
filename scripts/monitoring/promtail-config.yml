@@ -25,15 +25,27 @@ scrape_configs:
       - target_label: 'service_type'
         replacement: 'vhs'
     pipeline_stages:
+      # VHS uses Bunyan (JSON) with fields: level, msg, name, time
       - json:
           expressions:
-            level: level
+            raw_level: level
             msg: msg
             name: name
             time: time
+
+      # Normalize Bunyan numeric levels to strings
+      # 10=trace, 20=debug, 30=info, 40=warn, 50=error, 60=fatal
+      - template:
+          source: level
+          template: '{{ if eq .raw_level "10" }}trace{{ else if eq .raw_level "20" }}debug{{ else if eq .raw_level "30" }}info{{ else if eq .raw_level "40" }}warning{{ else if eq .raw_level "50" }}error{{ else if eq .raw_level "60" }}fatal{{ else }}{{ .raw_level }}{{ end }}'
+
       - labels:
           level:
           name:
+
       - timestamp:
           source: time
           format: RFC3339Nano
+
+      - output:
+          source: msg
