@@ -99,6 +99,7 @@ services:
     command:
       - -config.file=/etc/promtail/config.yml
       - -client.url=http://infra-monitoring.testnet.postfiat.org:3100/loki/api/v1/push
+      - -client.external-labels=hostname=vhs-testnet
     networks:
       - vhs-network
     restart: unless-stopped
