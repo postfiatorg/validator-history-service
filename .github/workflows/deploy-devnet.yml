@@ -104,9 +104,13 @@ jobs:
           host: ${{ secrets.VULTR_DEVNET_HOST }}
           username: ${{ secrets.VULTR_SSH_USER }}
           key: ${{ secrets.VULTR_SSH_KEY }}
+          envs: DEVNET_RPC_ADMIN_IP
           script: |
             cd /opt/vhs
             mv docker-compose.devnet.yml docker-compose.yml
+            echo "DEVNET_RPC_ADMIN_IP=${DEVNET_RPC_ADMIN_IP}" > .env
             docker compose pull
             docker compose up -d --force-recreate
             docker image prune -f
+        env:
+          DEVNET_RPC_ADMIN_IP: ${{ secrets.DEVNET_RPC_ADMIN_IP }}

@@ -97,7 +97,7 @@ export function parseBlob(blob: string): UNLBlob {
 export async function fetchRpcManifest(
   key: string,
 ): Promise<string | undefined> {
-  const url = `https://${config.rippled_rpc_admin_server}`
+  const url = `http://${config.rippled_rpc_admin_server}`
   const data = JSON.stringify({
     method: 'manifest',
     params: [{ public_key: `${key}` }],
@@ -135,7 +135,7 @@ export async function fetchRpcManifest(
  * @throws When the RPC request fails or returns invalid data.
  */
 export async function fetchValidatorsFromRpc(): Promise<UNLBlob> {
-  const url = `https://${config.rippled_rpc_admin_server}`
+  const url = `http://${config.rippled_rpc_admin_server}`
   const data = JSON.stringify({
     method: 'validators',
   })
