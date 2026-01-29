@@ -27,6 +27,20 @@ import {
 const log = logger({ name: 'connections' })
 const ports = [443, 6005, 6006, 6007, 51233, 51234]
 const protocols = ['wss://', 'ws://']
+
+/**
+ * Derives WebSocket URL from RPC hostname.
+ * Replaces 'rpc.' prefix with 'ws.' prefix for Caddy-proxied WebSocket connections.
+ *
+ * @param hostname - The RPC hostname (e.g., 'rpc.devnet.postfiat.org').
+ * @returns The WebSocket URL (e.g., 'wss://ws.devnet.postfiat.org').
+ */
+function deriveWsUrl(hostname: string): string {
+  if (hostname.startsWith('rpc.')) {
+    return `wss://${hostname.replace('rpc.', 'ws.')}`
+  }
+  return ''
+}
 const networkFee: Map<string, FeeVote> = new Map()
 const validationNetworkDb: Map<string, string> = new Map()
 const enableAmendmentLedgerIndexMap: Map<string, number> = new Map()
@@ -190,7 +204,7 @@ async function createConnections(): Promise<void> {
   networksDb.forEach((network) => {
     nodes.push({
       ip: network.entry,
-      ws_url: '',
+      ws_url: deriveWsUrl(network.entry),
       networks: network.id,
     })
   })
