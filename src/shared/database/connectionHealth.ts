@@ -146,17 +146,15 @@ export async function getTotalConnectedNodes(): Promise<number> {
 }
 
 /**
- * Sets connected column to false and status_update_time to current time.
+ * Clears all connection health entries on startup.
+ * This ensures fresh WebSocket subscriptions are created after restart.
  *
  * @returns Promise that resolves to void.
- *
  */
 export async function clearConnectionHealthDb(): Promise<void> {
   try {
-    await query('connection_health').update({
-      connected: false,
-      status_update_time: new Date(),
-    })
+    await query('connection_health').delete()
+    log.info('Cleared connection_health table on startup')
   } catch (err) {
     log.error('Error clearing connections', err)
   }
