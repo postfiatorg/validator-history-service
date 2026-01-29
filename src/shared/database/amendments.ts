@@ -39,7 +39,8 @@ const AMENDMENT_VERSION_REGEX =
   /\| \[(?<amendmentName>[a-zA-Z0-9_]+)\][^\n]+\| (?<version>v[0-9]*\.[0-9]*\.[0-9]*|TBD) *\|/u
 
 export const NETWORKS_HOSTS = new Map([
-  ['test', 'wss://rpc.testnet.postfiat.org:6007'],
+  ['dev', 'wss://ws.devnet.postfiat.org:443'],
+  ['test', 'wss://ws.testnet.postfiat.org:443'],
 ])
 
 /**

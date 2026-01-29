@@ -34,10 +34,24 @@ const LEDGER_HASHES_SIZE = 10
 const GOT_MAJORITY_FLAG = 65536
 const LOST_MAJORITY_FLAG = 131072
 const FOURTEEN_DAYS_IN_MILLISECONDS = 14 * 24 * 60 * 60 * 1000
-const ports = [443, 80, 6005, 6006, 6007, 51233, 51234]
+const FALLBACK_PORTS = [6005, 6006, 6007, 51233, 51234]
 const protocols = ['wss://', 'ws://']
 
 const log = logger({ name: 'connections' })
+
+/**
+ * Derives WebSocket hostname from RPC hostname.
+ * Replaces 'rpc.' prefix with 'ws.' prefix for Caddy-proxied WebSocket connections.
+ *
+ * @param hostname - The RPC hostname (e.g., 'rpc.devnet.postfiat.org').
+ * @returns The WebSocket hostname (e.g., 'ws.devnet.postfiat.org').
+ */
+function deriveWsHostname(hostname: string): string {
+  if (hostname.startsWith('rpc.')) {
+    return hostname.replace('rpc.', 'ws.')
+  }
+  return hostname
+}
 
 /**
  * Subscribes a WebSocket to manifests and validations streams.
@@ -339,7 +353,15 @@ async function getAmendmentsFromLedgerEntry(
     `Started fetching Amendments ledger entry for ${network} @ ${hostName}`,
   )
   const allUrls: string[] = []
-  for (const port of ports) {
+
+  // Prioritize Caddy-proxied WebSocket endpoint (wss://ws.{domain}:443)
+  const wsHostname = deriveWsHostname(hostName)
+  if (wsHostname !== hostName) {
+    allUrls.push(`wss://${wsHostname}:443`)
+  }
+
+  // Fallback to direct connections on various ports
+  for (const port of FALLBACK_PORTS) {
     for (const protocol of protocols) {
       allUrls.push(`${protocol}${hostName}:${port}`)
     }
