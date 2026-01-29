@@ -40,7 +40,8 @@ const AMENDMENT_VERSION_REGEX =
 
 export const NETWORKS_HOSTS = new Map([
   ['dev', 'wss://ws.devnet.postfiat.org:443'],
-  ['test', 'wss://ws.testnet.postfiat.org:443'],
+  // TODO: Add testnet once ws.testnet.postfiat.org is configured
+  // ['test', 'wss://ws.testnet.postfiat.org:443'],
 ])
 
 /**
