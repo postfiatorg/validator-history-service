@@ -31,7 +31,7 @@ services:
       DB_DATABASE: validator_history_db
       ACQUIRE_CONNECTION_TIMEOUT: 120000
       NODE_ENV: development
-      MAINNET_P2P_ENTRY: ${DEVNET_RPC_ADMIN_IP}
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
       RIPPLED_RPC_ADMIN: ${DEVNET_RPC_ADMIN_IP}:5005
       NETWORK_ID: dev
       MAXMIND_USER: ${MAXMIND_USER}
@@ -55,7 +55,7 @@ services:
       DB_DATABASE: validator_history_db
       ACQUIRE_CONNECTION_TIMEOUT: 120000
       NODE_ENV: development
-      MAINNET_P2P_ENTRY: ${DEVNET_RPC_ADMIN_IP}
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
       RIPPLED_RPC_ADMIN: ${DEVNET_RPC_ADMIN_IP}:5005
       NETWORK_ID: dev
     depends_on:
@@ -79,7 +79,7 @@ services:
       NODE_ENV: development
       PORT: 3000
       ADDR: 0.0.0.0
-      MAINNET_P2P_ENTRY: ${DEVNET_RPC_ADMIN_IP}
+      MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
       RIPPLED_RPC_ADMIN: ${DEVNET_RPC_ADMIN_IP}:5005
       NETWORK_ID: dev
     ports:
