@@ -77,8 +77,8 @@
   "result": [
     {
       "public_key" : "n9Mh83gUuY4hBXVD9geWHsyVwz5h32rjauLWQCZJVTEbCb5TYs21",
-      "ip": null,
-      "port": null
+      "ip": "1.1.1.1",
+      "port": 51235
     },
     {
       "public_key": "n9Kt2gdtxsYV6h4SAfHkRFUMU8gB6rDQ3MktiB3MMEDS9s9obu9b",

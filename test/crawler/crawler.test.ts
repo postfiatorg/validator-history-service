@@ -151,8 +151,8 @@ describe('Runs test crawl', () => {
     })
 
     expect(results).toContainEqual({
-      ip: null,
-      port: null,
+      ip: '2.2.2.2',
+      port: 51235,
       public_key: 'n9Mh83gUuY4hBXVD9geWHsyVwz5h32rjauLWQCZJVTEbCb5TYs21',
     })
 
