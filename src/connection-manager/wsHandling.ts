@@ -34,8 +34,38 @@ const LEDGER_HASHES_SIZE = 10
 const GOT_MAJORITY_FLAG = 65536
 const LOST_MAJORITY_FLAG = 131072
 const FOURTEEN_DAYS_IN_MILLISECONDS = 14 * 24 * 60 * 60 * 1000
-const FALLBACK_PORTS = [6005, 6006, 6007, 51233, 51234]
-const protocols = ['wss://', 'ws://']
+
+// PostFiat networks (dev, test) only expose wss:// on port 6005
+const POSTFIAT_NETWORKS = ['dev', 'test']
+const POSTFIAT_FALLBACK_PORTS = [6005]
+const POSTFIAT_PROTOCOLS = ['wss://']
+
+const DEFAULT_FALLBACK_PORTS = [6005, 6006, 6007, 51233, 51234]
+const DEFAULT_PROTOCOLS = ['wss://', 'ws://']
+
+/**
+ * Get fallback ports based on network type.
+ *
+ * @param network - The network identifier (e.g., 'dev', 'test').
+ * @returns Array of fallback ports to try for the given network.
+ */
+function getFallbackPortsForNetwork(network: string): number[] {
+  return POSTFIAT_NETWORKS.includes(network)
+    ? POSTFIAT_FALLBACK_PORTS
+    : DEFAULT_FALLBACK_PORTS
+}
+
+/**
+ * Get protocols to try based on network type.
+ *
+ * @param network - The network identifier (e.g., 'dev', 'test').
+ * @returns Array of protocols to try for the given network.
+ */
+function getProtocolsForNetwork(network: string): string[] {
+  return POSTFIAT_NETWORKS.includes(network)
+    ? POSTFIAT_PROTOCOLS
+    : DEFAULT_PROTOCOLS
+}
 
 const log = logger({ name: 'connections' })
 
@@ -360,8 +390,10 @@ async function getAmendmentsFromLedgerEntry(
     allUrls.push(`wss://${wsHostname}:443`)
   }
 
-  // Fallback to direct connections on various ports
-  for (const port of FALLBACK_PORTS) {
+  // Fallback to direct connections on network-appropriate ports
+  const fallbackPorts = getFallbackPortsForNetwork(network)
+  const protocols = getProtocolsForNetwork(network)
+  for (const port of fallbackPorts) {
     for (const protocol of protocols) {
       allUrls.push(`${protocol}${hostName}:${port}`)
     }

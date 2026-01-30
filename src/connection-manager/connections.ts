@@ -25,8 +25,37 @@ import {
 } from './wsHandling'
 
 const log = logger({ name: 'connections' })
-const ports = [443, 6005, 6006, 6007, 51233, 51234]
-const protocols = ['wss://', 'ws://']
+
+// PostFiat networks (dev, test) only expose wss:// on port 6005
+// Other networks may use various ports/protocols
+const POSTFIAT_NETWORKS = ['dev', 'test']
+const POSTFIAT_PORTS = [6005]
+const POSTFIAT_PROTOCOLS = ['wss://']
+
+const DEFAULT_PORTS = [443, 6005, 6006, 6007, 51233, 51234]
+const DEFAULT_PROTOCOLS = ['wss://', 'ws://']
+
+/**
+ * Get WebSocket ports to try based on network type.
+ *
+ * @param network - The network identifier (e.g., 'dev', 'test').
+ * @returns Array of ports to try for the given network.
+ */
+function getPortsForNetwork(network: string): number[] {
+  return POSTFIAT_NETWORKS.includes(network) ? POSTFIAT_PORTS : DEFAULT_PORTS
+}
+
+/**
+ * Get WebSocket protocols to try based on network type.
+ *
+ * @param network - The network identifier (e.g., 'dev', 'test').
+ * @returns Array of protocols to try for the given network.
+ */
+function getProtocolsForNetwork(network: string): string[] {
+  return POSTFIAT_NETWORKS.includes(network)
+    ? POSTFIAT_PROTOCOLS
+    : DEFAULT_PROTOCOLS
+}
 
 /**
  * Derives WebSocket URL from RPC hostname.
@@ -165,6 +194,9 @@ async function findConnection(node: WsNode): Promise<void> {
     const ws = new WebSocket(node.ws_url, { handshakeTimeout: WS_TIMEOUT })
     return setHandlers(ws, node.public_key, node.networks)
   }
+
+  const ports = getPortsForNetwork(node.networks)
+  const protocols = getProtocolsForNetwork(node.networks)
 
   const promises: Array<Promise<void>> = []
   for (const port of ports) {
