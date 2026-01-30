@@ -2,16 +2,21 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access -- TODO: add type for Peer Crawler to remove eslint-disable */
 /* eslint-disable @typescript-eslint/no-unsafe-call -- TODO: add type for Peer Crawler to remove eslint-disable */
 /* eslint-disable no-unsafe-optional-chaining -- TODO: add type for Peer Crawler to remove eslint-disable */
+import dns from 'dns'
 import https from 'https'
+import { isIP } from 'net'
+import { promisify } from 'util'
 
 import axios, { AxiosInstance } from 'axios'
 
 import { Crawl, Node } from '../shared/types'
+import { getIPv4Address } from '../shared/utils'
 import logger from '../shared/utils/logger'
 
 let fetch: AxiosInstance | undefined
 
 const log = logger({ name: 'crawl' })
+const dnsLookup = promisify(dns.lookup)
 
 /**
  * Gets Axios Instance, creates if not instantiated.
@@ -64,9 +69,21 @@ async function crawlNode(
         return undefined
       }
 
+      let resolvedIp: string = host
+      if (!isIP(host)) {
+        try {
+          const result = await dnsLookup(host, { family: 4 })
+          resolvedIp = result.address
+        } catch {
+          resolvedIp = getIPv4Address(host) ?? host
+        }
+      } else {
+        resolvedIp = getIPv4Address(host) ?? host
+      }
+
       const this_node: Node = {
         public_key,
-        ip: host,
+        ip: resolvedIp,
         port,
         server_state,
         io_latency_ms,
