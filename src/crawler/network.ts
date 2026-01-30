@@ -69,16 +69,16 @@ async function crawlNode(
         return undefined
       }
 
-      let resolvedIp: string = host
-      if (!isIP(host)) {
+      let resolvedIp: string
+      if (isIP(host)) {
+        resolvedIp = getIPv4Address(host)
+      } else {
         try {
           const result = await dnsLookup(host, { family: 4 })
           resolvedIp = result.address
         } catch {
-          resolvedIp = getIPv4Address(host) ?? host
+          resolvedIp = host
         }
-      } else {
-        resolvedIp = getIPv4Address(host) ?? host
       }
 
       const this_node: Node = {
