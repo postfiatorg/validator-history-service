@@ -63,16 +63,16 @@ class Crawler {
   ): boolean {
     const newestLedger = Crawler.getRecentLedger(thisCompleteLedgers)
     const nodeNewestLedger = Crawler.getRecentLedger(nodeCompleteLedgers)
+
+    // If either node doesn't have ledger info, allow the peer through
+    // (peers in /crawl overlay response often don't have complete_ledgers)
     if (newestLedger == null || nodeNewestLedger == null) {
-      return false
+      return true
     }
 
     const intNewestLedger = parseInt(newestLedger, 10)
     const intNodeNewestLedger = parseInt(nodeNewestLedger, 10)
-    if (Math.abs(intNewestLedger - intNodeNewestLedger) <= LEDGER_RANGE) {
-      return true
-    }
-    return false
+    return Math.abs(intNewestLedger - intNodeNewestLedger) <= LEDGER_RANGE
   }
 
   /**
