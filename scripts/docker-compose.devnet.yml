@@ -32,7 +32,7 @@ services:
       ACQUIRE_CONNECTION_TIMEOUT: 120000
       NODE_ENV: development
       MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
-      RIPPLED_RPC_ADMIN: ${DEVNET_RPC_ADMIN_IP}:5005
+      RIPPLED_RPC_ADMIN: ${DEVNET_RPC_HOST}:5005
       NETWORK_ID: dev
       MAXMIND_USER: ${MAXMIND_USER}
       MAXMIND_KEY: ${MAXMIND_KEY}
@@ -56,7 +56,7 @@ services:
       ACQUIRE_CONNECTION_TIMEOUT: 120000
       NODE_ENV: development
       MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
-      RIPPLED_RPC_ADMIN: ${DEVNET_RPC_ADMIN_IP}:5005
+      RIPPLED_RPC_ADMIN: ${DEVNET_RPC_HOST}:5005
       NETWORK_ID: dev
     depends_on:
       postgres:
@@ -80,7 +80,7 @@ services:
       PORT: 3000
       ADDR: 0.0.0.0
       MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
-      RIPPLED_RPC_ADMIN: ${DEVNET_RPC_ADMIN_IP}:5005
+      RIPPLED_RPC_ADMIN: ${DEVNET_RPC_HOST}:5005
       NETWORK_ID: dev
     ports:
       - "3000:3000"
