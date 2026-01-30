@@ -34,6 +34,8 @@ services:
       MAINNET_P2P_ENTRY: rpc.devnet.postfiat.org
       RIPPLED_RPC_ADMIN: ${DEVNET_RPC_ADMIN_IP}:5005
       NETWORK_ID: dev
+      MAXMIND_USER: ${MAXMIND_USER}
+      MAXMIND_KEY: ${MAXMIND_KEY}
     depends_on:
       postgres:
         condition: service_healthy
