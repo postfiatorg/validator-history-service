@@ -66,6 +66,8 @@ async function crawlNode(
 
       const this_node: Node = {
         public_key,
+        ip: host,
+        port,
         server_state,
         io_latency_ms,
         load_factor_server,
