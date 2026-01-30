@@ -202,8 +202,13 @@ class Crawler {
 
     const { this_node, active_nodes } = nodes
 
+    const entryNode = {
+      ...this_node,
+      start: this.start.format(TIME_FORMAT),
+    }
+
     // If we are saving the node outside of peer iterations, we do not want to force missing parameters to null
-    const promises: Array<Promise<void>> = [saveNode(this_node, false)]
+    const promises: Array<Promise<void>> = [saveNode(entryNode, false)]
 
     for (const node of active_nodes) {
       const normalizedPublicKey = Crawler.normalizePublicKey(node.public_key)
