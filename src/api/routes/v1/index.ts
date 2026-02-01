@@ -13,6 +13,7 @@ import handleValidatorManifest from './manifests'
 import handleNetworks from './networks'
 import { handleNode, handleNodes, handleTopology } from './nodes'
 import { handleValidator, handleValidators } from './validator'
+import handleValidatorHourlyReport from './validator-hourly-report'
 import handleValidatorReport from './validator-report'
 
 const api = createRouter()
@@ -32,6 +33,10 @@ api.use('/network/topology/nodes', handleNodes)
 api.use('/network/topology/node/:publicKey', handleNode)
 api.use('/network/topology', handleTopology)
 
+api.use(
+  '/network/validator/:publicKey/reports/hourly',
+  handleValidatorHourlyReport,
+)
 api.use('/network/validator/:publicKey/reports', handleValidatorReport)
 api.use('/network/validator/:publicKey/manifests', handleValidatorManifest)
 api.use('/network/validator/:publicKey', handleValidator)
