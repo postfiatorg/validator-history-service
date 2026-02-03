@@ -35,9 +35,24 @@ interface VotingValidators {
   unl: boolean
 }
 
+interface VotingProgress {
+  unl_votes: number
+  total_unl: number
+  percentage: number
+  threshold_percentage: number
+  has_majority: boolean
+}
+
+interface NotVoting {
+  count: number
+  unl_count: number
+  validators: Array<{ signing_key: string }>
+}
+
 interface AmendmentsInfoExtended extends AmendmentInfo {
   threshold: string
   consensus: string
+  voting_progress: VotingProgress
   eta?: Date
 }
 
@@ -46,12 +61,18 @@ interface AmendmentInVoting extends AmendmentsInfoExtended {
     count: number
     validators: VotingValidators[]
   }
+  not_voting: NotVoting
 }
 
 interface AmendmentInVotingMap {
   [key: string]: Omit<AmendmentsInfoExtended, 'id'> & {
     validators: VotingValidators[]
+    not_voting: NotVoting
   }
+}
+
+interface UnlValidator {
+  signing_key: string
 }
 
 interface EnabledAmendmentInfo extends AmendmentInfo {
@@ -181,7 +202,19 @@ function parseAmendmentVote(
         rippled_version: '',
         threshold: '',
         consensus: '',
+        voting_progress: {
+          unl_votes: 0,
+          total_unl: 0,
+          percentage: 0,
+          threshold_percentage: CONSENSUS_FACTOR,
+          has_majority: false,
+        },
         validators: [],
+        not_voting: {
+          count: 0,
+          unl_count: 0,
+          validators: [],
+        },
         deprecated: false,
       }
     }
@@ -198,32 +231,46 @@ function parseAmendmentVote(
  *
  * @param votingMap -- The map of all voting amendments on the network.
  * @param amendment_id -- The id of the amendment.
- * @param network_id -- The id of the network.
+ * @param allUnlValidators -- All UNL validators for the network.
  */
-async function calculateConsensus(
+function calculateConsensus(
   votingMap: AmendmentInVotingMap,
   amendment_id: string,
-  network_id: string,
-): Promise<void> {
-  const votedUNL = votingMap[amendment_id].validators.filter(
-    (validator) => validator.unl,
-  ).length
-  const dbUNL = (await query('validators')
-    .count('signing_key AS count')
-    .whereNotNull('unl')
-    .andWhere('chain', network_id)) as Array<{ count: number }>
+  allUnlValidators: UnlValidator[],
+): void {
+  const votedValidators = votingMap[amendment_id].validators
+  const votedUNL = votedValidators.filter((validator) => validator.unl).length
+  const totalUnl = allUnlValidators.length
 
-  const totalUnl: number = dbUNL[0].count
+  const percentage = totalUnl > 0 ? votedUNL / totalUnl : 0
+  const thresholdRequired = Math.ceil(CONSENSUS_FACTOR * totalUnl)
 
-  // eslint-disable-next-line require-atomic-updates -- The threshold is only updated for each id once at a time.
-  votingMap[amendment_id].threshold = `${Math.ceil(
-    CONSENSUS_FACTOR * totalUnl,
-  ).toString()}/${totalUnl.toString()}`
-  // eslint-disable-next-line require-atomic-updates -- The concensus is only updated for each id once at a time.
-  votingMap[amendment_id].consensus = (votedUNL / totalUnl).toLocaleString(
-    undefined,
-    { style: 'percent', minimumFractionDigits: 2 },
+  votingMap[amendment_id].threshold = `${thresholdRequired}/${totalUnl}`
+  votingMap[amendment_id].consensus = percentage.toLocaleString(undefined, {
+    style: 'percent',
+    minimumFractionDigits: 2,
+  })
+
+  votingMap[amendment_id].voting_progress = {
+    unl_votes: votedUNL,
+    total_unl: totalUnl,
+    percentage,
+    threshold_percentage: CONSENSUS_FACTOR,
+    has_majority: votedUNL >= thresholdRequired,
+  }
+
+  const votedSigningKeys = new Set(
+    votedValidators.map((val) => val.signing_key),
   )
+  const notVotingUnl = allUnlValidators.filter(
+    (val) => !votedSigningKeys.has(val.signing_key),
+  )
+
+  votingMap[amendment_id].not_voting = {
+    count: notVotingUnl.length,
+    unl_count: notVotingUnl.length,
+    validators: notVotingUnl.map((val) => ({ signing_key: val.signing_key })),
+  }
 }
 
 /**
@@ -250,6 +297,11 @@ async function getVotingAmendments(id: string): Promise<AmendmentInVoting[]> {
     .whereNotNull('eta')
     .whereNull('date')) as AmendmentStatus[]
 
+  const allUnlValidators = (await query('validators')
+    .select('signing_key')
+    .whereNotNull('unl')
+    .andWhere('chain', id)) as UnlValidator[]
+
   const votingAmendments: AmendmentInVotingMap = {}
 
   inNetworks.forEach((val) => {
@@ -271,7 +323,7 @@ async function getVotingAmendments(id: string): Promise<AmendmentInVoting[]> {
       votingAmendments[amendment.id].name = amendment.name
       votingAmendments[amendment.id].rippled_version = amendment.rippled_version
       votingAmendments[amendment.id].deprecated = amendment.deprecated
-      await calculateConsensus(votingAmendments, amendment.id, id)
+      calculateConsensus(votingAmendments, amendment.id, allUnlValidators)
     }
   }
 
@@ -285,11 +337,13 @@ async function getVotingAmendments(id: string): Promise<AmendmentInVoting[]> {
         deprecated: value.deprecated,
         threshold: value.threshold,
         consensus: value.consensus,
+        voting_progress: value.voting_progress,
         eta: value.eta,
         voted: {
           count: value.validators.length,
           validators: value.validators,
         },
+        not_voting: value.not_voting,
       })
     }
   }
