@@ -68,9 +68,7 @@ jobs:
           build-args: |
             ENVIRONMENT=testnet
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:testnet-latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:testnet-${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:testnet-latest
 
   deploy:
     needs: build-and-push
@@ -106,6 +104,7 @@ jobs:
           host: ${{ secrets.VULTR_TESTNET_HOST }}
           username: ${{ secrets.VULTR_SSH_USER }}
           key: ${{ secrets.VULTR_SSH_KEY }}
+          envs: TESTNET_RPC_HOST,MAXMIND_USER,MAXMIND_KEY
           script: |
             cd /opt/vhs
             mv docker-compose.testnet.yml docker-compose.yml
@@ -114,6 +113,16 @@ jobs:
             ufw allow 80/tcp comment 'HTTP (Caddy ACME)'
             ufw allow 443/tcp comment 'HTTPS (VHS API)'
 
+            cat > .env << EOF
+            TESTNET_RPC_HOST=${TESTNET_RPC_HOST}
+            MAXMIND_USER=${MAXMIND_USER}
+            MAXMIND_KEY=${MAXMIND_KEY}
+            EOF
+
             docker compose pull
             docker compose up -d --force-recreate
             docker image prune -f
+        env:
+          TESTNET_RPC_HOST: ${{ secrets.TESTNET_RPC_HOST }}
+          MAXMIND_USER: ${{ secrets.MAXMIND_USER }}
+          MAXMIND_KEY: ${{ secrets.MAXMIND_KEY }}

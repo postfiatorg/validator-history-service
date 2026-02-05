@@ -32,8 +32,10 @@ services:
       ACQUIRE_CONNECTION_TIMEOUT: 120000
       NODE_ENV: production
       MAINNET_P2P_ENTRY: rpc.testnet.postfiat.org
-      RIPPLED_RPC_ADMIN: rpc.testnet.postfiat.org:5006
+      RIPPLED_RPC_ADMIN: ${TESTNET_RPC_HOST}:5005
       NETWORK_ID: test
+      MAXMIND_USER: ${MAXMIND_USER}
+      MAXMIND_KEY: ${MAXMIND_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,7 +56,7 @@ services:
       ACQUIRE_CONNECTION_TIMEOUT: 120000
       NODE_ENV: production
       MAINNET_P2P_ENTRY: rpc.testnet.postfiat.org
-      RIPPLED_RPC_ADMIN: rpc.testnet.postfiat.org:5006
+      RIPPLED_RPC_ADMIN: ${TESTNET_RPC_HOST}:5005
       NETWORK_ID: test
     depends_on:
       postgres:
@@ -78,7 +80,7 @@ services:
       PORT: 3000
       ADDR: 0.0.0.0
       MAINNET_P2P_ENTRY: rpc.testnet.postfiat.org
-      RIPPLED_RPC_ADMIN: rpc.testnet.postfiat.org:5006
+      RIPPLED_RPC_ADMIN: ${TESTNET_RPC_HOST}:5005
       NETWORK_ID: test
     ports:
       - "3000:3000"
