@@ -96,6 +96,8 @@ curl -fsSL https://get.docker.com | sh
 apt install -y docker-compose-plugin
 mkdir -p /opt/vhs
 ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
 ufw allow 3000/tcp
 ufw --force enable
 ```
@@ -143,7 +145,7 @@ Check containers are running:
 docker ps
 ```
 
-Expected output shows 5 containers: `vhs-postgres`, `vhs-crawler`, `vhs-connections`, `vhs-api`, `vhs-promtail`
+Expected output shows 6 containers: `vhs-postgres`, `vhs-crawler`, `vhs-connections`, `vhs-api`, `vhs-caddy`, `vhs-promtail`
 
 Test API health:
 
@@ -151,11 +153,24 @@ Test API health:
 curl localhost:3000/v1/health
 ```
 
-Or from external:
+Or from external (HTTPS recommended):
 
 ```bash
+# HTTPS (recommended for browser-based clients)
+curl https://vhs.devnet.postfiat.org/v1/health
+
+# HTTP legacy (still available on port 3000)
 curl http://vhs.devnet.postfiat.org:3000/v1/health
 ```
+
+## API Endpoints
+
+| Environment | HTTPS (recommended) | HTTP (legacy) |
+|-------------|---------------------|---------------|
+| Devnet | `https://vhs.devnet.postfiat.org` | `http://vhs.devnet.postfiat.org:3000` |
+| Testnet | `https://vhs.testnet.postfiat.org` | `http://vhs.testnet.postfiat.org:3000` |
+
+Caddy automatically obtains and renews SSL certificates from Let's Encrypt.
 
 ## Monitoring
 

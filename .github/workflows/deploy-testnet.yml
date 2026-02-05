@@ -109,6 +109,11 @@ jobs:
           script: |
             cd /opt/vhs
             mv docker-compose.testnet.yml docker-compose.yml
+
+            # Ensure firewall allows HTTPS traffic
+            ufw allow 80/tcp comment 'HTTP (Caddy ACME)'
+            ufw allow 443/tcp comment 'HTTPS (VHS API)'
+
             docker compose pull
             docker compose up -d --force-recreate
             docker image prune -f

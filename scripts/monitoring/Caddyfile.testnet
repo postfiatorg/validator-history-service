@@ -1,0 +1,6 @@
+# VHS Testnet - Caddy reverse proxy for HTTPS
+# Auto-obtains SSL certificate from Let's Encrypt
+
+vhs.testnet.postfiat.org {
+    reverse_proxy api:3000
+}

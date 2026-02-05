@@ -108,6 +108,11 @@ jobs:
           script: |
             cd /opt/vhs
             mv docker-compose.devnet.yml docker-compose.yml
+
+            # Ensure firewall allows HTTPS traffic
+            ufw allow 80/tcp comment 'HTTP (Caddy ACME)'
+            ufw allow 443/tcp comment 'HTTPS (VHS API)'
+
             cat > .env << EOF
             DEVNET_RPC_HOST=${DEVNET_RPC_HOST}
             MAXMIND_USER=${MAXMIND_USER}

@@ -25,8 +25,10 @@ echo "Created /opt/vhs directory"
 # Configure firewall
 if command -v ufw &> /dev/null; then
     echo "Configuring firewall..."
-    ufw allow 22/tcp
-    ufw allow 3000/tcp
+    ufw allow 22/tcp comment 'SSH'
+    ufw allow 80/tcp comment 'HTTP (Caddy ACME)'
+    ufw allow 443/tcp comment 'HTTPS (VHS API)'
+    ufw allow 3000/tcp comment 'HTTP (VHS API legacy)'
     ufw --force enable
     ufw status
 fi

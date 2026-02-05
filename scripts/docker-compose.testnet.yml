@@ -89,6 +89,22 @@ services:
       - vhs-network
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: vhs-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./monitoring/Caddyfile.testnet:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - vhs-network
+    restart: unless-stopped
+
   promtail:
     image: grafana/promtail:3.0.0
     container_name: vhs-promtail
@@ -110,4 +126,8 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
