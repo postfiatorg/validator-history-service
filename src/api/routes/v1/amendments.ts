@@ -242,7 +242,9 @@ function calculateConsensus(
   const totalUnl = allUnlValidators.length
 
   const percentage = totalUnl > 0 ? votedUNL / totalUnl : 0
-  const thresholdRequired = Math.ceil(config.amendment_majority_threshold * totalUnl)
+  const thresholdRequired = Math.ceil(
+    config.amendment_majority_threshold * totalUnl,
+  )
 
   votingMap[amendment_id].threshold = `${thresholdRequired}/${totalUnl}`
   votingMap[amendment_id].consensus = percentage.toLocaleString(undefined, {
