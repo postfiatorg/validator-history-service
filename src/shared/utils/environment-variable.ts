@@ -17,6 +17,7 @@ export enum EnvironmentVariable {
   mainnet_p2p_server = 'MAINNET_P2P_ENTRY',
   network_id = 'NETWORK_ID',
   amendment_majority_time = 'AMENDMENT_MAJORITY_TIME',
+  amendment_majority_threshold = 'AMENDMENT_MAJORITY_THRESHOLD',
 }
 
 /**

@@ -54,6 +54,13 @@ const amendment_majority_time = parseInt(
   10,
 )
 
+const MAINNET_MAJORITY_THRESHOLD = 0.8
+
+const amendment_majority_threshold = parseFloat(
+  getEnvironmentVariable(EnvironmentVariable.amendment_majority_threshold) ??
+    String(MAINNET_MAJORITY_THRESHOLD),
+)
+
 const config = {
   nodeEnv,
   db,
@@ -64,6 +71,7 @@ const config = {
   mainnet_p2p_server,
   network_id,
   amendment_majority_time,
+  amendment_majority_threshold,
 }
 
 export default config

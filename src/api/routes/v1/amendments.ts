@@ -3,6 +3,7 @@ import { Request, Response } from 'express'
 import { getNetworks, query } from '../../../shared/database'
 import { AmendmentStatus, AmendmentInfo } from '../../../shared/types'
 import { isEarlierVersion } from '../../../shared/utils'
+import config from '../../../shared/utils/config'
 import logger from '../../../shared/utils/logger'
 
 import { CACHE_INTERVAL_MILLIS } from './utils'
@@ -92,8 +93,6 @@ interface CacheVote {
   networks: Map<string, Array<EnabledAmendmentInfo | AmendmentInVoting>>
   time: number
 }
-
-const CONSENSUS_FACTOR = 0.8
 
 const log = logger({ name: 'api-amendments' })
 
@@ -206,7 +205,7 @@ function parseAmendmentVote(
           unl_votes: 0,
           total_unl: 0,
           percentage: 0,
-          threshold_percentage: CONSENSUS_FACTOR,
+          threshold_percentage: config.amendment_majority_threshold,
           has_majority: false,
         },
         validators: [],
@@ -243,7 +242,7 @@ function calculateConsensus(
   const totalUnl = allUnlValidators.length
 
   const percentage = totalUnl > 0 ? votedUNL / totalUnl : 0
-  const thresholdRequired = Math.ceil(CONSENSUS_FACTOR * totalUnl)
+  const thresholdRequired = Math.ceil(config.amendment_majority_threshold * totalUnl)
 
   votingMap[amendment_id].threshold = `${thresholdRequired}/${totalUnl}`
   votingMap[amendment_id].consensus = percentage.toLocaleString(undefined, {
@@ -255,7 +254,7 @@ function calculateConsensus(
     unl_votes: votedUNL,
     total_unl: totalUnl,
     percentage,
-    threshold_percentage: CONSENSUS_FACTOR,
+    threshold_percentage: config.amendment_majority_threshold,
     has_majority: votedUNL >= thresholdRequired,
   }
 
