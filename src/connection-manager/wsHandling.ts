@@ -25,6 +25,7 @@ import {
   StreamManifest,
   ValidationRaw,
 } from '../shared/types'
+import config from '../shared/utils/config'
 import logger from '../shared/utils/logger'
 
 import agreement from './agreement'
@@ -33,8 +34,6 @@ import { handleManifest } from './manifests'
 const LEDGER_HASHES_SIZE = 10
 const GOT_MAJORITY_FLAG = 65536
 const LOST_MAJORITY_FLAG = 131072
-const FOURTEEN_DAYS_IN_MILLISECONDS = 14 * 24 * 60 * 60 * 1000
-
 // PostFiat networks (dev, test) only expose wss:// on port 6005
 const POSTFIAT_NETWORKS = ['dev', 'test']
 const POSTFIAT_FALLBACK_PORTS = [6005]
@@ -288,7 +287,7 @@ export async function handleWsMessageLedgerEnableAmendments(
             networks,
             eta: new Date(
               rippleTimeToUnixTime(data.result.ledger.close_time) +
-                FOURTEEN_DAYS_IN_MILLISECONDS,
+                config.amendment_majority_time,
             ),
           }
           await saveAmendmentStatus(incomingAmendment)

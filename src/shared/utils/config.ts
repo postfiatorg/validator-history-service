@@ -46,6 +46,14 @@ const network_id = getRequiredEnvironmentVariable(
   EnvironmentVariable.network_id,
 )
 
+const FOURTEEN_DAYS_IN_MILLISECONDS = 1209600000
+
+const amendment_majority_time = parseInt(
+  getEnvironmentVariable(EnvironmentVariable.amendment_majority_time) ??
+    String(FOURTEEN_DAYS_IN_MILLISECONDS),
+  10,
+)
+
 const config = {
   nodeEnv,
   db,
@@ -55,6 +63,7 @@ const config = {
   addr,
   mainnet_p2p_server,
   network_id,
+  amendment_majority_time,
 }
 
 export default config

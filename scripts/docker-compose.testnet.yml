@@ -34,6 +34,7 @@ services:
       MAINNET_P2P_ENTRY: rpc.testnet.postfiat.org
       RIPPLED_RPC_ADMIN: ${TESTNET_RPC_HOST}:5005
       NETWORK_ID: test
+      AMENDMENT_MAJORITY_TIME: 259200000
       MAXMIND_USER: ${MAXMIND_USER}
       MAXMIND_KEY: ${MAXMIND_KEY}
     depends_on:
@@ -58,6 +59,7 @@ services:
       MAINNET_P2P_ENTRY: rpc.testnet.postfiat.org
       RIPPLED_RPC_ADMIN: ${TESTNET_RPC_HOST}:5005
       NETWORK_ID: test
+      AMENDMENT_MAJORITY_TIME: 259200000
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,6 +84,7 @@ services:
       MAINNET_P2P_ENTRY: rpc.testnet.postfiat.org
       RIPPLED_RPC_ADMIN: ${TESTNET_RPC_HOST}:5005
       NETWORK_ID: test
+      AMENDMENT_MAJORITY_TIME: 259200000
     ports:
       - "3000:3000"
     depends_on:

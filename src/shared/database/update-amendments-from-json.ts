@@ -3,12 +3,11 @@ import { rippleTimeToUnixTime } from 'xrpl'
 import amendmentInfoData from '../data/amendments_info.json'
 import amendmentStatusData from '../data/amendments_status.json'
 import { AmendmentStatus, AmendmentInfo } from '../types'
+import config from '../utils/config'
 import logger from '../utils/logger'
 
 import { saveAmendmentInfo } from './amendments'
 import { query } from './utils'
-
-const FOURTEEN_DAYS_IN_MILLISECONDS = 14 * 24 * 60 * 60 * 1000
 
 const log = logger({ name: 'database-agreement' })
 
@@ -75,7 +74,7 @@ async function addAmendmentsStatusFromJSON(): Promise<void> {
         eta: amendment.eta
           ? new Date(
               rippleTimeToUnixTime(amendment.eta) +
-                FOURTEEN_DAYS_IN_MILLISECONDS,
+                config.amendment_majority_time,
             )
           : undefined,
       }
