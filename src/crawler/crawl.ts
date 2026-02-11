@@ -173,7 +173,8 @@ class Crawler {
         return crawl
       }
       const { node_unl } = crawl
-      if (node_unl && !unls.includes(node_unl)) {
+      const isRpcOnly = unls.length === 1 && unls[0] === 'rpc'
+      if (node_unl && !isRpcOnly && !unls.includes(node_unl)) {
         this.removeConnection(host)
         return undefined
       }

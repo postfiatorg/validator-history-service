@@ -38,8 +38,6 @@ async function setupCrawlsTable(): Promise<void> {
       table.text('incomplete_shards')
       table.string('ip')
       table.integer('port')
-      table.string('ws_url')
-      table.boolean('connected')
       table.string('networks')
       table.string('type')
       table.integer('uptime')
@@ -57,16 +55,24 @@ async function setupCrawlsTable(): Promise<void> {
     })
   }
 
-  if (await db().schema.hasColumn('crawls', 'ws_url')) {
-    await db().schema.alterTable('crawls', (table) => {
-      table.dropColumn('ws_url')
-    })
+  try {
+    if (await db().schema.hasColumn('crawls', 'ws_url')) {
+      await db().schema.alterTable('crawls', (table) => {
+        table.dropColumn('ws_url')
+      })
+    }
+  } catch {
+    log.info('ws_url column already dropped by another process')
   }
 
-  if (await db().schema.hasColumn('crawls', 'connected')) {
-    await db().schema.alterTable('crawls', (table) => {
-      table.dropColumn('connected')
-    })
+  try {
+    if (await db().schema.hasColumn('crawls', 'connected')) {
+      await db().schema.alterTable('crawls', (table) => {
+        table.dropColumn('connected')
+      })
+    }
+  } catch {
+    log.info('connected column already dropped by another process')
   }
 }
 
