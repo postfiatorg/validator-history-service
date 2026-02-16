@@ -64,10 +64,8 @@ class Crawler {
     const newestLedger = Crawler.getRecentLedger(thisCompleteLedgers)
     const nodeNewestLedger = Crawler.getRecentLedger(nodeCompleteLedgers)
 
-    // If either node doesn't have ledger info, allow the peer through
-    // (peers in /crawl overlay response often don't have complete_ledgers)
     if (newestLedger == null || nodeNewestLedger == null) {
-      return true
+      return false
     }
 
     const intNewestLedger = parseInt(newestLedger, 10)
@@ -102,7 +100,7 @@ class Crawler {
     const port = network.port ?? DEFAULT_PORT
     log.info(`Starting crawl at ${network.entry}:${port}`)
 
-    await this.crawlEndpoint(network.entry, port, network.unls)
+    await this.crawlEndpoint(network.entry, port, network.unls, port)
     await this.saveConnections(network.id)
   }
 
@@ -188,12 +186,14 @@ class Crawler {
    * @param host - Hostname or ip address of peer.
    * @param port - Port to hit /crawl endpoint.
    * @param unls - List of UNLs on the current network.
+   * @param networkPort - The expected port for this network (used to filter foreign peers).
    * @returns Void.
    */
   private async crawlEndpoint(
     host: string,
     port: number,
     unls: string[],
+    networkPort: number,
   ): Promise<void> {
     const nodes: Crawl | undefined = await this.crawlNode(host, port, unls)
 
@@ -223,17 +223,14 @@ class Crawler {
         continue
       }
 
+      const peerOnWrongPort =
+        node.port !== undefined && node.port !== networkPort
+
       this.updateConnections(
         this_node.public_key,
         normalizedPublicKey,
         node.type === 'in',
       )
-
-      const dbNode = {
-        ...node,
-        public_key: normalizedPublicKey,
-        start: this.start.format(TIME_FORMAT),
-      }
 
       if (this.publicKeysSeen.has(normalizedPublicKey)) {
         continue
@@ -241,15 +238,21 @@ class Crawler {
 
       this.publicKeysSeen.add(normalizedPublicKey)
 
-      // If a peer has the node IP as null, we want to overwrite in the database
-      promises.push(saveNode(dbNode, true))
+      if (!peerOnWrongPort) {
+        const dbNode = {
+          ...node,
+          public_key: normalizedPublicKey,
+          start: this.start.format(TIME_FORMAT),
+        }
+        promises.push(saveNode(dbNode, true))
+      }
 
-      if (node.ip === undefined || node.port === undefined) {
+      if (node.ip === undefined || node.port === undefined || peerOnWrongPort) {
         continue
       }
 
       const ip = getIPv4Address(node.ip)
-      promises.push(this.crawlEndpoint(ip, node.port, unls))
+      promises.push(this.crawlEndpoint(ip, node.port, unls, networkPort))
     }
 
     await Promise.all(promises)

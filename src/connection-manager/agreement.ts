@@ -28,6 +28,7 @@ const log = logger({ name: 'agreement' })
 
 const AGREEMENT_INTERVAL = 60 * 60 * 1000
 const PURGE_INTERVAL = 10 * 60 * 1000
+const VALIDATION_LEDGER_RANGE = 100000
 
 /**
  * Calculates the intersection of two sets.
@@ -153,6 +154,8 @@ class Agreement {
   private readonly validationsByPublicKey: Map<string, Map<string, number>> =
     new Map()
 
+  private lastKnownLedgerIndex = 0
+
   private reported_at = new Date()
 
   /**
@@ -212,6 +215,15 @@ class Agreement {
    * @returns Void.
    */
   public async handleValidation(validation: ValidationRaw): Promise<void> {
+    const ledgerIndex = Number(validation.ledger_index)
+
+    if (
+      this.lastKnownLedgerIndex !== 0 &&
+      Math.abs(ledgerIndex - this.lastKnownLedgerIndex) > VALIDATION_LEDGER_RANGE
+    ) {
+      return
+    }
+
     const signing_key = validation.validation_public_key
 
     const hashes = this.validationsByPublicKey.get(signing_key) ?? new Map()
@@ -254,6 +266,7 @@ class Agreement {
       }
 
       chains.updateLedgers(validation)
+      this.lastKnownLedgerIndex = ledgerIndex
       await saveValidator(validator)
     }
   }
