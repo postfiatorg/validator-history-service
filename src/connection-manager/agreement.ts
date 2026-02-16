@@ -219,7 +219,8 @@ class Agreement {
 
     if (
       this.lastKnownLedgerIndex !== 0 &&
-      Math.abs(ledgerIndex - this.lastKnownLedgerIndex) > VALIDATION_LEDGER_RANGE
+      Math.abs(ledgerIndex - this.lastKnownLedgerIndex) >
+        VALIDATION_LEDGER_RANGE
     ) {
       return
     }
