@@ -224,7 +224,7 @@ class Crawler {
       }
 
       const peerOnWrongPort =
-        node.port !== undefined && node.port !== networkPort
+        node.port !== undefined && Number(node.port) !== networkPort
 
       this.updateConnections(
         this_node.public_key,
