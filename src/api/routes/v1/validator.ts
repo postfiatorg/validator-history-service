@@ -108,7 +108,7 @@ const cache: Cache = {
  */
 async function getValidators(): Promise<ValidatorResponse[]> {
   return query('validators')
-    .join('ballot', 'validators.signing_key', 'ballot.signing_key')
+    .leftJoin('ballot', 'validators.signing_key', 'ballot.signing_key')
     .select([
       'validators.partial',
       'validators.unl',
@@ -215,7 +215,7 @@ async function findInDatabase(
   public_key: string,
 ): Promise<ValidatorResponse | undefined> {
   const result = (await query('validators')
-    .join('ballot', 'validators.signing_key', 'ballot.signing_key')
+    .leftJoin('ballot', 'validators.signing_key', 'ballot.signing_key')
     .select([
       'validators.partial',
       'validators.unl',
