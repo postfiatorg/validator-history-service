@@ -162,8 +162,13 @@ class Agreement {
    * Sets interval for agreement.
    */
   public start(): void {
+    this.calculateAgreement().catch((err) => {
+      log.error('Initial agreement calculation failed', err)
+    })
     setInterval(() => {
-      void this.calculateAgreement()
+      this.calculateAgreement().catch((err) => {
+        log.error('Agreement calculation failed', err)
+      })
     }, AGREEMENT_INTERVAL)
     setInterval(() => {
       this.purge()
@@ -174,38 +179,45 @@ class Agreement {
    * Calculates agreement scores, run hourly.
    */
   public async calculateAgreement(): Promise<void> {
-    log.info('Calculating agreement scores')
-    const promises = []
+    try {
+      log.info('Calculating agreement scores')
+      const promises: Array<Promise<void>> = []
 
-    const agreementChains = chains.calculateChainsFromLedgers()
+      const agreementChains = chains.calculateChainsFromLedgers()
 
-    for (const chain of agreementChains) {
-      const ledger_hashes = chain.ledgers
-
-      const networkName = await getNetworkNameFromChainId(chain)
-
-      log.info(
-        `Agreement: ${chain.id}:${networkName}:${Array.from(
-          chain.validators,
-        ).join(',')}`,
-      )
-
-      for (const signing_key of chain.validators) {
-        promises.push(
-          this.calculateValidatorAgreement(
-            signing_key,
-            ledger_hashes,
-            chain.incomplete,
-          ),
-        )
+      if (agreementChains.length === 0) {
+        log.warn('No chains found for agreement calculation')
       }
+
+      for (const chain of agreementChains) {
+        const networkName = await getNetworkNameFromChainId(chain)
+
+        log.info(
+          `Agreement: ${chain.id}:${networkName}:${Array.from(
+            chain.validators,
+          ).join(',')}`,
+        )
+
+        const chainPromises = Array.from(
+          chain.validators,
+          async (signing_key) =>
+            this.calculateValidatorAgreement(
+              signing_key,
+              chain.ledgers,
+              chain.incomplete,
+            ),
+        )
+        promises.push(...chainPromises)
+      }
+      await Promise.all(promises)
+
+      await purgeHourlyAgreementScores()
+      await chains.purgeChains()
+
+      this.reported_at = new Date()
+    } catch (err) {
+      log.error('Error in agreement calculation', err)
     }
-    await Promise.all(promises)
-
-    await purgeHourlyAgreementScores()
-    await chains.purgeChains()
-
-    this.reported_at = new Date()
   }
 
   /**
