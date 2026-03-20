@@ -6,7 +6,6 @@ import {
   handleAmendmentInfo,
   handleAmendmentVote,
 } from './amendments'
-import handleConnections from './connections'
 import handleDailyScores from './daily-report'
 import getNetworkOrAdd from './get-network'
 import handleHealth, { handleMonitoringMetrics } from './health'
@@ -44,7 +43,6 @@ api.use('/network/validator/:publicKey', handleValidator)
 api.use('/network/validators/:param', handleValidators)
 api.use('/network/validators', handleValidators)
 
-api.use('/network/connections', handleConnections)
 api.use('/network/networks', handleNetworks)
 
 export default api
