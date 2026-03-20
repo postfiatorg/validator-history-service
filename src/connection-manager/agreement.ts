@@ -1,5 +1,6 @@
 import {
   getAgreementScores,
+  getAllActiveValidatorKeys,
   saveHourlyAgreement,
   saveDailyAgreement,
   saveValidator,
@@ -182,6 +183,7 @@ class Agreement {
     try {
       log.info('Calculating agreement scores')
       const promises: Array<Promise<void>> = []
+      const activeSigningKeys = new Set<string>()
 
       const agreementChains = chains.calculateChainsFromLedgers()
 
@@ -198,6 +200,10 @@ class Agreement {
           ).join(',')}`,
         )
 
+        for (const key of chain.validators) {
+          activeSigningKeys.add(key)
+        }
+
         const chainPromises = Array.from(
           chain.validators,
           async (signing_key) =>
@@ -210,6 +216,12 @@ class Agreement {
         promises.push(...chainPromises)
       }
       await Promise.all(promises)
+
+      const totalNetworkLedgers = agreementChains.reduce(
+        (max, chain) => Math.max(max, chain.ledgers.size),
+        0,
+      )
+      await this.scoreAbsentValidators(activeSigningKeys, totalNetworkLedgers)
 
       await purgeHourlyAgreementScores()
       await chains.purgeChains()
@@ -340,6 +352,54 @@ class Agreement {
 
     await update1HourValidatorAgreement(validator_keys, agreement)
     await updateAgreementScores(validator_keys)
+  }
+
+  /**
+   * Scores validators that were absent from all chains during this cycle.
+   * Writes zero-validated hourly entries so their agreement scores decay.
+   *
+   * @param activeSigningKeys - Signing keys that appeared in chains this cycle.
+   * @param totalNetworkLedgers - Total ledgers produced by the network this cycle.
+   */
+  private async scoreAbsentValidators(
+    activeSigningKeys: Set<string>,
+    totalNetworkLedgers: number,
+  ): Promise<void> {
+    if (totalNetworkLedgers === 0) {
+      return
+    }
+
+    const allValidators = await getAllActiveValidatorKeys()
+    const absentValidators = allValidators.filter(
+      (validator) => !activeSigningKeys.has(validator.signing_key),
+    )
+
+    if (absentValidators.length === 0) {
+      return
+    }
+
+    log.info(
+      `Scoring ${absentValidators.length} absent validators with 0 validated, ${totalNetworkLedgers} missed`,
+    )
+
+    const agreement: AgreementScore = {
+      validated: 0,
+      missed: totalNetworkLedgers,
+      incomplete: false,
+    }
+
+    const promises = absentValidators.map(async (validator_keys) => {
+      await saveHourlyAgreement({
+        main_key: validator_keys.master_key ?? validator_keys.signing_key,
+        start: this.reported_at,
+        agreement,
+      })
+      await update1HourValidatorAgreement(validator_keys, agreement)
+      await updateAgreementScores(validator_keys)
+      await updateDailyAgreement(validator_keys)
+    })
+
+    await Promise.all(promises)
   }
 
   /**

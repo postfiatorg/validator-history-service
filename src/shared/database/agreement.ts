@@ -4,6 +4,7 @@ import {
   AgreementScore,
   ValidatorKeys,
 } from '../types'
+import config from '../utils/config'
 import logger from '../utils/logger'
 
 import { query } from './utils'
@@ -19,7 +20,7 @@ const log = logger({ name: 'database-agreement' })
 export async function saveHourlyAgreement(
   agreement: HourlyAgreement,
 ): Promise<void> {
-  query('hourly_agreement')
+  await query('hourly_agreement')
     .insert(agreement)
     .onConflict(['main_key', 'start'])
     .merge()
@@ -58,6 +59,23 @@ export async function getAgreementScores(
   const agreement = await getHourlyAgreementScores(validator, start, end)
 
   return calculateAgreementScore(agreement)
+}
+
+/**
+ * Returns all non-revoked validator key pairs for the current network.
+ *
+ * @returns Array of ValidatorKeys with master_key and signing_key.
+ */
+export async function getAllActiveValidatorKeys(): Promise<ValidatorKeys[]> {
+  return query('validators')
+    .select('master_key', 'signing_key')
+    .where('revoked', '=', 'false')
+    .andWhere('networks', '=', config.network_id)
+    .then((rows) => rows as ValidatorKeys[])
+    .catch((err) => {
+      log.error('Error getting active validator keys', err)
+      return []
+    })
 }
 
 /**
