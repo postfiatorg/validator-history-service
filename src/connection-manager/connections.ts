@@ -79,6 +79,7 @@ const REPORTING_INTERVAL = 15 * 60 * 1000
 const BACKTRACK_INTERVAL = 30 * 60 * 1000
 const BASE_RETRY_DELAY = 1 * 1000
 const MAX_RETRY_DELAY = 30 * 1000
+const HEARTBEAT_INTERVAL = 30 * 1000
 
 // The frequent closing codes seen so far after connections established include:
 //  1008: Policy error: client is too slow. (Most frequent)
@@ -104,11 +105,14 @@ async function setHandlers(
   retryCount = 0,
 ): Promise<void> {
   const ledger_hashes: string[] = []
+  let heartbeatInterval: NodeJS.Timeout | undefined
+
   return new Promise(function setHandlersPromise(resolve, _reject) {
     ws.on('open', async () => {
       log.info(`Websocket connection opened for: ${ws.url} on ${network}`)
 
       if (await isNodeConnectedByWsUrl(ws.url)) {
+        ws.close()
         resolve()
         return
       }
@@ -120,6 +124,22 @@ async function setHandlers(
         status_update_time: new Date(),
       })
       subscribe(ws)
+
+      let pongReceived = true
+      ws.on('pong', () => {
+        pongReceived = true
+      })
+      heartbeatInterval = setInterval(() => {
+        if (!pongReceived) {
+          log.warn(
+            `No pong received from ${ws.url}, terminating dead connection`,
+          )
+          ws.terminate()
+          return
+        }
+        pongReceived = false
+        ws.ping()
+      }, HEARTBEAT_INTERVAL)
 
       resolve()
     })
@@ -143,6 +163,9 @@ async function setHandlers(
       )
     })
     ws.on('close', async (code) => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval)
+      }
       void updateConnectionHealthStatus(ws.url, false)
       ws.terminate()
 
@@ -162,6 +185,9 @@ async function setHandlers(
       resolve()
     })
     ws.on('error', () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval)
+      }
       void updateConnectionHealthStatus(ws.url, false)
       ws.terminate()
       resolve()

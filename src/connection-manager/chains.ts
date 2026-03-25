@@ -229,8 +229,8 @@ class Chains {
 
     if (chainWithThisValidator !== undefined) {
       const skipped = ledger.ledger_index - chainWithThisValidator.current
-      log.warn(`Possibly skipped ${skipped} ledgers`)
-      if (skipped > 1 && skipped < 20) {
+      if (skipped > 1) {
+        log.warn(`Skipped ${skipped} ledgers, jumping chain forward`)
         chainWithThisValidator.incomplete = true
         addLedgerToChain(ledger, chainWithThisValidator)
       }
