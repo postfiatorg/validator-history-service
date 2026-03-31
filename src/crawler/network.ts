@@ -16,6 +16,25 @@ import logger from '../shared/utils/logger'
 let fetch: AxiosInstance | undefined
 
 const log = logger({ name: 'crawl' })
+const VERSION_PREFIX = 'postfiatd-'
+
+/**
+ * Strips the "postfiatd-" prefix from version strings reported by the daemon's
+ * /crawl endpoint. Older binaries include the prefix in overlay peer data via
+ * HTTP headers; newer binaries do not. Normalizing here ensures crawls.version
+ * stores bare semver regardless of which daemon version reported the data.
+ *
+ * @param version - Raw version string from the /crawl response.
+ * @returns Version string without the software name prefix.
+ */
+function normalizeVersion(version: string | undefined): string {
+  if (!version) {
+    return ''
+  }
+  return version.startsWith(VERSION_PREFIX)
+    ? version.slice(VERSION_PREFIX.length)
+    : version
+}
 const dnsLookup = promisify(dns.lookup)
 
 /**
@@ -61,7 +80,7 @@ async function crawlNode(
         io_latency_ms,
         load_factor_server,
         uptime,
-        build_version: version,
+        build_version,
         complete_ledgers,
       } = response.data?.server
 
@@ -81,6 +100,12 @@ async function crawlNode(
         }
       }
 
+      const version = normalizeVersion(build_version)
+      const normalizedPeers = active_nodes.map((node: Node) => ({
+        ...node,
+        version: normalizeVersion(node.version),
+      }))
+
       const this_node: Node = {
         public_key,
         ip: resolvedIp,
@@ -97,7 +122,7 @@ async function crawlNode(
 
       const crawl: Crawl = {
         this_node,
-        active_nodes,
+        active_nodes: normalizedPeers,
         node_unl:
           validatorSites.length > 0
             ? validatorSites[0].uri.replace(/^https?:\/\//u, '')
