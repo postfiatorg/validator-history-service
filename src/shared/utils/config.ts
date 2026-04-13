@@ -1,3 +1,5 @@
+import migrations from '../database/migrations-config'
+
 import {
   EnvironmentVariable,
   getEnvironmentVariable,
@@ -23,6 +25,7 @@ const db = {
       '120000',
     10,
   ),
+  migrations,
 }
 
 const maxmind = {

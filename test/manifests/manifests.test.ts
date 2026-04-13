@@ -9,7 +9,7 @@ import {
 import {
   destroy,
   query,
-  setupTables,
+  initializeDatabase,
   tearDown,
 } from '../../src/shared/database'
 import networks from '../../src/shared/database/networks'
@@ -24,7 +24,7 @@ const VALIDATOR_URL = networks[0].unls[0]
 describe.skip('manifest ingest', () => {
   beforeAll(async () => {
     await tearDown()
-    await setupTables()
+    await initializeDatabase()
   })
 
   afterAll(async () => {

@@ -4,7 +4,7 @@ import { handleWsMessageLedgerEnableAmendments } from '../../src/connection-mana
 import {
   destroy,
   query,
-  setupTables,
+  initializeDatabase,
   saveAmendmentsStatus,
 } from '../../src/shared/database'
 import { AmendmentStatus } from '../../src/shared/types'
@@ -20,7 +20,7 @@ const flushPromises = async (): Promise<void> =>
 
 describe('Amendments', () => {
   beforeAll(async () => {
-    await setupTables()
+    await initializeDatabase()
   })
 
   afterAll(async () => {

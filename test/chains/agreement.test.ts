@@ -3,7 +3,7 @@ import {
   decodeServerVersion,
   destroy,
   query,
-  setupTables,
+  initializeDatabase,
 } from '../../src/shared/database'
 import { DailyAgreement, HourlyAgreement } from '../../src/shared/types'
 
@@ -11,7 +11,7 @@ import validations from './fixtures/all-validations.json'
 
 describe('Agreement', () => {
   beforeAll(async () => {
-    await setupTables()
+    await initializeDatabase()
   })
 
   afterAll(async () => {

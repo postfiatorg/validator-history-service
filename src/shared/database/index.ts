@@ -22,8 +22,8 @@ import {
   update30DayValidatorAgreement,
   decodeServerVersion,
 } from './agreement'
+import initializeDatabase from './initialize'
 import { Network } from './networks'
-import setupTables from './setup'
 import { db, tearDown, query, destroy } from './utils'
 
 const log = logger({ name: 'database' })
@@ -301,7 +301,7 @@ export async function purgeHourlyAgreementScores(): Promise<void> {
 
 export {
   db,
-  setupTables,
+  initializeDatabase,
   tearDown,
   query,
   destroy,

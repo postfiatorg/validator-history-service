@@ -1,6 +1,6 @@
 import {
   query,
-  setupTables,
+  initializeDatabase,
   tearDown,
   getNodes,
   destroy,
@@ -26,7 +26,7 @@ const flushPromises = async (): Promise<void> =>
 describe.skip('connection_health tests', () => {
   beforeAll(async () => {
     await tearDown()
-    await setupTables()
+    await initializeDatabase()
     await flushPromises()
   })
 

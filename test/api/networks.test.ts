@@ -1,13 +1,13 @@
 import { Request, Response } from 'express'
 
 import handleNetworks from '../../src/api/routes/v1/networks'
-import { setupTables, destroy, query } from '../../src/shared/database'
+import { initializeDatabase, destroy, query } from '../../src/shared/database'
 import networks from '../../src/shared/database/networks'
 
 describe('networks endpoint', () => {
   beforeAll(async () => {
     await query('networks').delete('*')
-    await setupTables()
+    await initializeDatabase()
   })
 
   afterAll(async () => {

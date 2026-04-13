@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 
 import { handleValidators } from '../../src/api/routes/v1/validator'
-import { destroy, query, setupTables } from '../../src/shared/database'
+import { destroy, query, initializeDatabase } from '../../src/shared/database'
 
 import expectedValidatorsResult from './fixtures/expected_validators_result.json'
 import initialBallotSet from './fixtures/initial_ballot_table.json'
@@ -12,7 +12,7 @@ describe.skip('tests for validators endpoint', () => {
   beforeAll(async () => {
     await query('validators').delete('*')
     await query('ballot').delete('*')
-    await setupTables()
+    await initializeDatabase()
   })
 
   afterAll(async () => {

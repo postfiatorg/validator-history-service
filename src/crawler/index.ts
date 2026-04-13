@@ -2,7 +2,7 @@
 import 'dotenv/config'
 import moment from 'moment'
 
-import { setupTables, getNetworks } from '../shared/database'
+import { initializeDatabase, getNetworks } from '../shared/database'
 import logger from '../shared/utils/logger'
 
 import Crawler from './crawl'
@@ -33,7 +33,7 @@ async function crawl(): Promise<void> {
 }
 
 async function start(): Promise<void> {
-  await setupTables()
+  await initializeDatabase()
   await crawl()
   void locate()
 }

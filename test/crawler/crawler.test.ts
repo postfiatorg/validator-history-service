@@ -1,7 +1,7 @@
 import nock from 'nock'
 
 import Crawler from '../../src/crawler/crawl'
-import { destroy, query, setupTables } from '../../src/shared/database'
+import { destroy, query, initializeDatabase } from '../../src/shared/database'
 import { Node } from '../../src/shared/types'
 
 import network2 from './fixtures/cyclic-network.json'
@@ -18,7 +18,7 @@ async function crawl(ip: string): Promise<void> {
 
 describe('Runs test crawl', () => {
   beforeAll(async () => {
-    await setupTables()
+    await initializeDatabase()
   })
 
   afterAll(async () => {

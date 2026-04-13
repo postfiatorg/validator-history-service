@@ -217,6 +217,8 @@ docker compose pull
 docker compose up -d
 ```
 
+Database schema changes are handled automatically by the migration runner on container startup. See [MIGRATIONS.md](MIGRATIONS.md) for the rollout and rollback procedure.
+
 ## Resetting VHS (Validator Redeployments)
 
 When validators are destroyed and redeployed with new keys, VHS will see them as new validators while old data persists. For devnet and testnet, it's cleanest to reset VHS to start fresh.

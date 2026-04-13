@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 
 import { handleMonitoringMetrics } from '../../src/api/routes/v1/health'
-import { destroy, query, setupTables } from '../../src/shared/database'
+import { destroy, query, initializeDatabase } from '../../src/shared/database'
 import { saveConnectionHealth } from '../../src/shared/database/connectionHealth'
 import { ConnectionHealth } from '../../src/shared/types'
 
@@ -15,7 +15,7 @@ const flushPromises = async (): Promise<void> =>
 // TODO: Update tests for PostFiat networks
 describe.skip('connections health', () => {
   beforeAll(async () => {
-    await setupTables()
+    await initializeDatabase()
     await query('connection_health').delete('*')
   })
 
