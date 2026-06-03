@@ -156,6 +156,54 @@ export async function saveManifest(manifest: DatabaseManifest): Promise<void> {
     .catch((err) => log.error('Error Saving Manifest', err))
 }
 
+export interface ManifestVerificationState {
+  domain_verified: boolean | null
+  last_verified: Date | null
+  last_checked: Date | null
+}
+
+/**
+ * Reads the current domain verification state for a manifest.
+ *
+ * @param master_signature - The manifest's master signature.
+ * @returns The verification state, or undefined if the manifest is not stored.
+ */
+export async function getManifestVerificationState(
+  master_signature: string,
+): Promise<ManifestVerificationState | undefined> {
+  const rows = (await query('manifests')
+    .select('domain_verified', 'last_verified', 'last_checked')
+    .where({ master_signature })
+    .limit(1)) as ManifestVerificationState[]
+  return rows[0]
+}
+
+/**
+ * Updates verification bookkeeping for an existing manifest without rewriting
+ * the rest of the row. Used to advance the check timestamp (and optionally
+ * downgrade domain_verified) while preserving the stored manifest data.
+ *
+ * @param master_signature - The manifest's master signature.
+ * @param fields - The verification columns to update.
+ * @param fields.domain_verified - New verification flag, if it should change.
+ * @param fields.last_verified - Timestamp of the last successful verification.
+ * @param fields.last_checked - Timestamp of this verification attempt.
+ * @returns Void.
+ */
+export async function updateManifestVerification(
+  master_signature: string,
+  fields: {
+    domain_verified?: boolean
+    last_verified?: Date
+    last_checked: Date
+  },
+): Promise<void> {
+  await query('manifests')
+    .where({ master_signature })
+    .update(fields)
+    .catch((err) => log.error('Error updating manifest verification', err))
+}
+
 /**
  * Returns all validator master/signing keys.
  *

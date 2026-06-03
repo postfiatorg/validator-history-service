@@ -2,6 +2,8 @@ import { normalizeManifest } from 'xrpl-validator-domains'
 
 import {
   saveManifest,
+  getManifestVerificationState,
+  updateManifestVerification,
   getValidatorKeys,
   query,
   db,
@@ -12,21 +14,48 @@ import {
   Manifest,
   UNLBlob,
   UNLValidator,
-  DatabaseManifest,
 } from '../shared/types'
 import {
   fetchValidatorsFromRpc,
   fetchRpcManifest,
   getLists,
 } from '../shared/utils'
-import { verifyValidatorDomain } from '../shared/utils/domain-verification'
+import {
+  verifyValidatorDomain,
+  DomainVerification,
+} from '../shared/utils/domain-verification'
 import logger from '../shared/utils/logger'
 
 import hard_dunl from './fixtures/unl-hard.json'
 
 const log = logger({ name: 'manifests' })
 const MANIFESTS_JOB_INTERVAL = 5 * 60 * 1000 // 5 minutes
+// A manifest whose domain was checked within this window is not re-fetched,
+// regardless of how many triggers fire. New or rotated manifests have no prior
+// check and are verified immediately.
+const DOMAIN_REVERIFY_INTERVAL = 12 * 60 * 60 * 1000 // 12 hours
+// A verified domain that stays unreachable beyond this window is downgraded to
+// unverified, so abandoned domains eventually converge to the truth without
+// reintroducing short-term flapping.
+const DOMAIN_STALE_THRESHOLD = 7 * 24 * 60 * 60 * 1000 // 7 days
 let jobsStarted = false
+
+/**
+ * Determines whether a manifest's domain was checked recently enough to skip
+ * re-verification this cycle.
+ *
+ * @param last_checked - When the manifest's domain was last checked.
+ * @param now - The current time.
+ * @returns Whether re-verification should be skipped.
+ */
+function checkedRecently(last_checked: Date | null, now: Date): boolean {
+  if (!last_checked) {
+    return false
+  }
+  return (
+    now.getTime() - new Date(last_checked).getTime() < DOMAIN_REVERIFY_INTERVAL
+  )
+}
 
 /**
  * Performs Domain verification and saves the Manifest.
@@ -37,12 +66,23 @@ let jobsStarted = false
 export async function handleManifest(
   manifest: Manifest | StreamManifest | string,
 ): Promise<void> {
-  let verification
   let normalized
   try {
     normalized = normalizeManifest(manifest)
   } catch (err: unknown) {
     log.error('Manifest could not be normalized', err)
+    return
+  }
+
+  const now = new Date()
+  const masterSignature = normalized.master_signature
+  const existing = masterSignature
+    ? await getManifestVerificationState(masterSignature)
+    : undefined
+
+  // Throttle: an unchanged manifest checked within the re-verify window is not
+  // re-fetched. A new or rotated manifest has no prior row and verifies now.
+  if (existing && checkedRecently(existing.last_checked, now)) {
     return
   }
 
@@ -54,42 +94,116 @@ export async function handleManifest(
     }`,
   )
 
+  let verification
   try {
     verification = await verifyValidatorDomain(manifest)
-    log.info(
-      `Domain verification result for ${normalized.master_key}: verified=${verification.verified}, verified_manifest_signature=${verification.verified_manifest_signature}, message="${verification.message}"`,
-    )
   } catch (err: unknown) {
+    // Unexpected failure: preserve the last-known state rather than assert false.
     log.error(
       `Domain verification exception for ${normalized.master_key} (domain: ${
         normalized.domain ?? 'none'
       })`,
       err,
     )
-    const dBManifest: DatabaseManifest = {
-      domain_verified: false,
-      ...normalized,
+    if (masterSignature && existing) {
+      await updateManifestVerification(masterSignature, { last_checked: now })
     }
-    await saveManifest(dBManifest)
     return
   }
 
-  if (verification.verified_manifest_signature && verification.manifest) {
-    const dBManifest: DatabaseManifest = {
-      domain_verified: verification.verified,
-      ...verification.manifest,
-    }
-    log.info(
-      `Saving manifest for ${normalized.master_key}: domain_verified=${
-        verification.verified
-      }, domain=${dBManifest.domain ?? 'none'}`,
-    )
-    await saveManifest(dBManifest)
-  } else {
+  log.info(
+    `Domain verification for ${normalized.master_key}: status=${verification.status}, message="${verification.message}"`,
+  )
+
+  if (verification.status === DomainVerification.InvalidManifest) {
+    // The manifest signature itself is unverifiable; do not persist or overwrite.
     log.warn(
       `Manifest signature verification failed for ${normalized.master_key}, not saving to database`,
     )
+    return
   }
+
+  if (verification.status === DomainVerification.Verified) {
+    await saveManifest({
+      ...verification.manifest,
+      domain_verified: true,
+      last_verified: now,
+      last_checked: now,
+    })
+    return
+  }
+
+  if (verification.status === DomainVerification.Failed) {
+    await saveManifest({
+      ...verification.manifest,
+      domain_verified: false,
+      last_checked: now,
+    })
+    return
+  }
+
+  // DomainVerification.Unreachable: the TOML could not be retrieved.
+  await handleUnreachableDomain(
+    verification.manifest,
+    masterSignature,
+    existing,
+    now,
+  )
+}
+
+/**
+ * Handles a manifest whose domain TOML could not be retrieved. Preserves the
+ * last-known verification state, advancing only the check timestamp, and
+ * downgrades a previously verified domain that has been unreachable past the
+ * staleness threshold.
+ *
+ * @param manifest - The normalized manifest.
+ * @param masterSignature - The manifest's master signature, if present.
+ * @param existing - The stored verification state, if any.
+ * @param now - The current time.
+ * @returns Void.
+ */
+async function handleUnreachableDomain(
+  manifest: Manifest,
+  masterSignature: string | undefined,
+  existing:
+    | { domain_verified: boolean | null; last_verified: Date | null }
+    | undefined,
+  now: Date,
+): Promise<void> {
+  if (!existing || !masterSignature) {
+    // Never-seen manifest we cannot reach: store its metadata with an unknown
+    // (null) verification rather than asserting an unverified result.
+    await saveManifest({
+      ...manifest,
+      domain_verified: null,
+      last_checked: now,
+    })
+    return
+  }
+
+  const lastVerified = existing.last_verified
+    ? new Date(existing.last_verified).getTime()
+    : undefined
+  const stale =
+    existing.domain_verified &&
+    lastVerified !== undefined &&
+    now.getTime() - lastVerified > DOMAIN_STALE_THRESHOLD
+
+  if (stale) {
+    log.warn(
+      `Domain for ${manifest.master_key} unreachable since ${String(
+        existing.last_verified,
+      )}; downgrading to unverified`,
+    )
+    await updateManifestVerification(masterSignature, {
+      domain_verified: false,
+      last_checked: now,
+    })
+    return
+  }
+
+  await updateManifestVerification(masterSignature, { last_checked: now })
 }
 
 /**

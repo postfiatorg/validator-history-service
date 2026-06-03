@@ -193,8 +193,10 @@ interface UNLBlob {
 }
 
 interface DatabaseManifest extends Manifest {
-  domain_verified: boolean
+  domain_verified: boolean | null
   revoked?: boolean
+  last_verified?: Date
+  last_checked?: Date
 }
 
 interface AgreementScore {
