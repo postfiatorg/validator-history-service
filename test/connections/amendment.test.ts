@@ -90,13 +90,9 @@ describe('Amendments', () => {
       'main',
     )
 
-    await flushPromises()
-
     const amendments = (await query('amendments_status').select(
       '*',
     )) as AmendmentStatus[]
-
-    await flushPromises()
 
     expect(amendments[0].networks).toBe('main')
     expect(amendments.map((amendment) => amendment.amendment_id)).toContain(
