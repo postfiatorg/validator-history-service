@@ -20,7 +20,10 @@ export function db(): Knex {
 }
 
 /**
- * Deletes tables in Database.
+ * Deletes tables in Database. The Knex migration bookkeeping is dropped as well
+ * so a subsequent initializeDatabase() re-runs migrations and recreates the
+ * schema; otherwise migrate.latest() treats the migrations as already applied
+ * and the dropped tables are never rebuilt.
  *
  * @returns Promise that resolves to void.
  */
@@ -30,6 +33,8 @@ export async function tearDown(): Promise<void> {
     .dropTableIfExists('connection_health')
     .dropTableIfExists('crawls')
     .dropTableIfExists('manifests')
+    .dropTableIfExists('knex_migrations')
+    .dropTableIfExists('knex_migrations_lock')
 }
 
 /**
