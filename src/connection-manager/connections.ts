@@ -15,8 +15,10 @@ import {
 } from '../shared/database/connectionHealth'
 import { FeeVote, WsNode } from '../shared/types'
 import { getIPv4Address } from '../shared/utils'
+import config from '../shared/utils/config'
 import logger from '../shared/utils/logger'
 
+import selectConnectionTargets from './peer-selection'
 import {
   backtrackAmendmentStatus,
   fetchAmendmentsFromLedgerEntry,
@@ -75,6 +77,14 @@ const validationNetworkDb: Map<string, string> = new Map()
 const enableAmendmentLedgerIndexMap: Map<string, number> = new Map()
 const CM_INTERVAL = 60 * 60 * 1000
 const WS_TIMEOUT = 10000
+// PostFiat peers serve rippled's self-signed certificate on the public WS port.
+// Validation authenticity comes from validator signatures, not TLS, so peer
+// connections accept self-signed certs the same way the crawler's HTTPS agent
+// already does. Without this, only the CA-fronted entry node connects.
+const WS_OPTIONS: WebSocket.ClientOptions = {
+  handshakeTimeout: WS_TIMEOUT,
+  rejectUnauthorized: false,
+}
 const REPORTING_INTERVAL = 15 * 60 * 1000
 const BACKTRACK_INTERVAL = 30 * 60 * 1000
 const BASE_RETRY_DELAY = 1 * 1000
@@ -176,7 +186,7 @@ async function setHandlers(
 
         setTimeout(async () => {
           // Open a new Websocket connection for the same url
-          const newWS = new WebSocket(ws.url, { handshakeTimeout: WS_TIMEOUT })
+          const newWS = new WebSocket(ws.url, WS_OPTIONS)
 
           await setHandlers(newWS, publicKey, network, retryCount + 1)
         }, delay)
@@ -217,7 +227,7 @@ async function findConnection(node: WsNode): Promise<void> {
   }
 
   if (node.ws_url) {
-    const ws = new WebSocket(node.ws_url, { handshakeTimeout: WS_TIMEOUT })
+    const ws = new WebSocket(node.ws_url, WS_OPTIONS)
     return setHandlers(ws, node.public_key, node.networks)
   }
 
@@ -228,7 +238,7 @@ async function findConnection(node: WsNode): Promise<void> {
   for (const port of ports) {
     for (const protocol of protocols) {
       const url = `${protocol}${node.ip}:${port}`
-      const ws = new WebSocket(url, { handshakeTimeout: WS_TIMEOUT })
+      const ws = new WebSocket(url, WS_OPTIONS)
       promises.push(setHandlers(ws, node.public_key, node.networks))
     }
   }
@@ -256,25 +266,28 @@ async function createConnections(): Promise<void> {
   const tenMinutesAgo = new Date()
   tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 10)
 
-  const nodes = await getNodes(tenMinutesAgo)
+  const peers = await getNodes(tenMinutesAgo)
 
   const networksDb = await getNetworks()
-  networksDb.forEach((network) => {
-    nodes.push({
-      ip: network.entry,
-      ws_url: deriveWsUrl(network.entry),
-      networks: network.id,
-    })
-  })
+  const entries: WsNode[] = networksDb.map((network) => ({
+    ip: network.entry,
+    ws_url: deriveWsUrl(network.entry),
+    networks: network.id,
+  }))
 
-  const promises: Array<Promise<void>> = []
+  const targets = selectConnectionTargets(
+    entries,
+    peers,
+    config.max_ws_connections,
+  )
 
-  nodes.forEach((node: WsNode) => {
-    promises.push(findConnection(node))
-  })
-  await Promise.all(promises)
+  await Promise.all(targets.map(async (node) => findConnection(node)))
 
-  log.info(`${await getTotalConnectedNodes()} connections created`)
+  log.info(
+    `${await getTotalConnectedNodes()} connections established (targeting ${
+      targets.length
+    } of ${peers.length + entries.length} known nodes)`,
+  )
 }
 
 setInterval(async () => {

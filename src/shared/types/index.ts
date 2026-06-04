@@ -242,6 +242,7 @@ interface WsNode {
   ws_url?: string
   networks: string
   public_key?: string
+  uptime?: number
 }
 
 export {

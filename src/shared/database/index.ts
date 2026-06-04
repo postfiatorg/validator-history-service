@@ -81,7 +81,7 @@ export async function saveNode(
 export async function getNodes(sinceStartDate: Date): Promise<WsNode[]> {
   return query('crawls as c')
     .leftJoin('connection_health as ch', 'c.public_key', 'ch.public_key')
-    .select('c.ip', 'ch.ws_url', 'c.networks', 'c.public_key')
+    .select('c.ip', 'ch.ws_url', 'c.networks', 'c.public_key', 'c.uptime')
     .whereNotNull('c.ip')
     .andWhere('c.start', '>', sinceStartDate)
 }

@@ -18,6 +18,7 @@ export enum EnvironmentVariable {
   network_id = 'NETWORK_ID',
   amendment_majority_time = 'AMENDMENT_MAJORITY_TIME',
   amendment_majority_threshold = 'AMENDMENT_MAJORITY_THRESHOLD',
+  max_ws_connections = 'MAX_WS_CONNECTIONS',
 }
 
 /**

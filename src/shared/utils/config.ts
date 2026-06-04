@@ -64,6 +64,14 @@ const amendment_majority_threshold = parseFloat(
     String(MAINNET_MAJORITY_THRESHOLD),
 )
 
+const DEFAULT_MAX_WS_CONNECTIONS = 20
+
+const max_ws_connections = parseInt(
+  getEnvironmentVariable(EnvironmentVariable.max_ws_connections) ??
+    String(DEFAULT_MAX_WS_CONNECTIONS),
+  10,
+)
+
 const config = {
   nodeEnv,
   db,
@@ -75,6 +83,7 @@ const config = {
   network_id,
   amendment_majority_time,
   amendment_majority_threshold,
+  max_ws_connections,
 }
 
 export default config
