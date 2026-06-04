@@ -72,6 +72,25 @@ const max_ws_connections = parseInt(
   10,
 )
 
+// An aggregated agreement score is flagged incomplete when fewer than this
+// fraction of the window's expected hourly buckets are present.
+const DEFAULT_AGREEMENT_COVERAGE_THRESHOLD = 0.9
+
+const agreement_coverage_threshold = parseFloat(
+  getEnvironmentVariable(EnvironmentVariable.agreement_coverage_threshold) ??
+    String(DEFAULT_AGREEMENT_COVERAGE_THRESHOLD),
+)
+
+// An aggregated agreement score is flagged incomplete when more than this
+// fraction of the present hourly buckets were themselves incomplete.
+const DEFAULT_AGREEMENT_INCOMPLETE_SHARE_THRESHOLD = 0.25
+
+const agreement_incomplete_share_threshold = parseFloat(
+  getEnvironmentVariable(
+    EnvironmentVariable.agreement_incomplete_share_threshold,
+  ) ?? String(DEFAULT_AGREEMENT_INCOMPLETE_SHARE_THRESHOLD),
+)
+
 const config = {
   nodeEnv,
   db,
@@ -84,6 +103,8 @@ const config = {
   amendment_majority_time,
   amendment_majority_threshold,
   max_ws_connections,
+  agreement_coverage_threshold,
+  agreement_incomplete_share_threshold,
 }
 
 export default config

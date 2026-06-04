@@ -19,6 +19,8 @@ export enum EnvironmentVariable {
   amendment_majority_time = 'AMENDMENT_MAJORITY_TIME',
   amendment_majority_threshold = 'AMENDMENT_MAJORITY_THRESHOLD',
   max_ws_connections = 'MAX_WS_CONNECTIONS',
+  agreement_coverage_threshold = 'AGREEMENT_COVERAGE_THRESHOLD',
+  agreement_incomplete_share_threshold = 'AGREEMENT_INCOMPLETE_SHARE_THRESHOLD',
 }
 
 /**

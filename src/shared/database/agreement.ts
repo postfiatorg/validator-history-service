@@ -7,7 +7,10 @@ import {
 import config from '../utils/config'
 import logger from '../utils/logger'
 
+import calculateAgreementScore from './agreement-score'
 import { query } from './utils'
+
+const HOUR_IN_MS = 60 * 60 * 1000
 
 const log = logger({ name: 'database-agreement' })
 
@@ -57,8 +60,16 @@ export async function getAgreementScores(
   end: Date,
 ): Promise<AgreementScore> {
   const agreement = await getHourlyAgreementScores(validator, start, end)
+  const expectedBuckets = Math.round(
+    (end.getTime() - start.getTime()) / HOUR_IN_MS,
+  )
 
-  return calculateAgreementScore(agreement)
+  return calculateAgreementScore(
+    agreement,
+    expectedBuckets,
+    config.agreement_coverage_threshold,
+    config.agreement_incomplete_share_threshold,
+  )
 }
 
 /**
@@ -127,28 +138,6 @@ async function getHourlyAgreementScores(
       log.error('Error getting hourly agreement scores', err)
       return []
     })
-}
-
-/**
- * Calculates an agreement score from a list of AgreementScores.
- *
- * @param scores - List of AgreementScores.
- * @returns Agreement Score for all scores.
- */
-function calculateAgreementScore(scores: AgreementScore[]): AgreementScore {
-  const result: AgreementScore = {
-    validated: 0,
-    missed: 0,
-    incomplete: false,
-  }
-
-  scores.forEach((score) => {
-    result.validated += score.validated
-    result.missed += score.missed
-    result.incomplete = result.incomplete || score.incomplete
-  })
-
-  return result
 }
 
 /**
