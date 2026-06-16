@@ -8,6 +8,7 @@ import {
   query,
   db,
   getNetworks,
+  ManifestVerificationState,
 } from '../shared/database'
 import {
   StreamManifest,
@@ -30,10 +31,18 @@ import hard_dunl from './fixtures/unl-hard.json'
 
 const log = logger({ name: 'manifests' })
 const MANIFESTS_JOB_INTERVAL = 5 * 60 * 1000 // 5 minutes
-// A manifest whose domain was checked within this window is not re-fetched,
-// regardless of how many triggers fire. New or rotated manifests have no prior
-// check and are verified immediately.
+// A verified domain checked within this window is not re-fetched, regardless of
+// how many triggers fire. Unverified or never-established domains use the
+// shorter DOMAIN_RETRY_INTERVAL instead, and new or rotated manifests have no
+// prior check and are verified immediately.
 const DOMAIN_REVERIFY_INTERVAL = 12 * 60 * 60 * 1000 // 12 hours
+// Domains that are not currently verified are re-probed on this shorter
+// interval so a recovered domain re-verifies within a job cycle instead of
+// waiting up to DOMAIN_REVERIFY_INTERVAL. Floored to the job cycle so the
+// manifest stream cannot trigger repeated TOML fetches between scheduled runs;
+// when stream activity resets the check timestamp just after a job tick, a
+// re-probe can slip to the next tick, bounding worst-case recovery at two cycles.
+const DOMAIN_RETRY_INTERVAL = MANIFESTS_JOB_INTERVAL
 // A verified domain that stays unreachable beyond this window is downgraded to
 // unverified, so abandoned domains eventually converge to the truth without
 // reintroducing short-term flapping.
@@ -41,20 +50,39 @@ const DOMAIN_STALE_THRESHOLD = 7 * 24 * 60 * 60 * 1000 // 7 days
 let jobsStarted = false
 
 /**
- * Determines whether a manifest's domain was checked recently enough to skip
- * re-verification this cycle.
+ * Determines whether a manifest's domain was checked within the given interval
+ * and re-verification should therefore be skipped this cycle.
  *
  * @param last_checked - When the manifest's domain was last checked.
  * @param now - The current time.
+ * @param interval - The applicable re-verification interval.
  * @returns Whether re-verification should be skipped.
  */
-function checkedRecently(last_checked: Date | null, now: Date): boolean {
+function checkedRecently(
+  last_checked: Date | null,
+  now: Date,
+  interval: number,
+): boolean {
   if (!last_checked) {
     return false
   }
-  return (
-    now.getTime() - new Date(last_checked).getTime() < DOMAIN_REVERIFY_INTERVAL
-  )
+  return now.getTime() - new Date(last_checked).getTime() < interval
+}
+
+/**
+ * Selects the re-verification interval for a manifest from its stored
+ * verification state. A verified domain is re-checked on the slow interval to
+ * limit load on healthy endpoints, while an unverified or never-established
+ * domain is retried on the short interval so a recovered domain re-verifies
+ * within a job cycle instead of up to the slow interval later.
+ *
+ * @param existing - The stored verification state.
+ * @returns The interval in milliseconds.
+ */
+function reverifyInterval(existing: ManifestVerificationState): number {
+  return existing.domain_verified
+    ? DOMAIN_REVERIFY_INTERVAL
+    : DOMAIN_RETRY_INTERVAL
 }
 
 /**
@@ -80,9 +108,14 @@ export async function handleManifest(
     ? await getManifestVerificationState(masterSignature)
     : undefined
 
-  // Throttle: an unchanged manifest checked within the re-verify window is not
-  // re-fetched. A new or rotated manifest has no prior row and verifies now.
-  if (existing && checkedRecently(existing.last_checked, now)) {
+  // Throttle: skip a domain re-checked within its applicable interval. Verified
+  // domains use the slow interval; unverified or never-established domains use a
+  // short interval so a recovered domain re-verifies within a job cycle. A new
+  // or rotated manifest has no prior row and verifies now.
+  if (
+    existing &&
+    checkedRecently(existing.last_checked, now, reverifyInterval(existing))
+  ) {
     return
   }
 

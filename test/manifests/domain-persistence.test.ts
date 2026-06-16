@@ -46,6 +46,10 @@ interface SeedFields {
   last_checked?: Date
 }
 
+function minutesAgo(minutes: number): Date {
+  return new Date(Date.now() - minutes * 60 * 1000)
+}
+
 function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000)
 }
@@ -180,5 +184,64 @@ describe('domain verification persistence', () => {
 
     expect(await readDomainVerified()).toBe(true)
     expect(await readLastVerified()).not.toBeNull()
+  })
+
+  test('re-probes an unverified domain after the short interval', async () => {
+    await seedManifest({
+      domain_verified: false,
+      last_checked: minutesAgo(10),
+    })
+    mockVerify.mockResolvedValue({
+      status: DomainVerification.Verified,
+      message: 'verified',
+      manifest: verifiedManifest,
+    })
+
+    await handleManifest(manifest)
+
+    expect(mockVerify).toHaveBeenCalled()
+    expect(await readDomainVerified()).toBe(true)
+  })
+
+  test('re-probes a never-established domain after the short interval', async () => {
+    await seedManifest({
+      domain_verified: null,
+      last_checked: minutesAgo(10),
+    })
+    mockVerify.mockResolvedValue({
+      status: DomainVerification.Verified,
+      message: 'verified',
+      manifest: verifiedManifest,
+    })
+
+    await handleManifest(manifest)
+
+    expect(mockVerify).toHaveBeenCalled()
+    expect(await readDomainVerified()).toBe(true)
+  })
+
+  test('throttles an unverified domain within the short interval', async () => {
+    await seedManifest({
+      domain_verified: false,
+      last_checked: minutesAgo(2),
+    })
+
+    await handleManifest(manifest)
+
+    expect(mockVerify).not.toHaveBeenCalled()
+    expect(await readDomainVerified()).toBe(false)
+  })
+
+  test('keeps a verified domain on the slow interval past the short interval', async () => {
+    await seedManifest({
+      domain_verified: true,
+      last_verified: hoursAgo(1),
+      last_checked: minutesAgo(10),
+    })
+
+    await handleManifest(manifest)
+
+    expect(mockVerify).not.toHaveBeenCalled()
+    expect(await readDomainVerified()).toBe(true)
   })
 })
