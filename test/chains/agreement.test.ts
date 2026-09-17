@@ -1,4 +1,6 @@
-import agreement from '../../src/connection-manager/agreement'
+import agreement, {
+  AGREEMENT_INTERVAL,
+} from '../../src/connection-manager/agreement'
 import {
   decodeServerVersion,
   destroy,
@@ -25,6 +27,9 @@ describe('Agreement', () => {
   })
 
   afterEach(async () => {
+    jest.clearAllTimers()
+    jest.useRealTimers()
+    jest.restoreAllMocks()
     await query('hourly_agreement').delete('*')
     await query('daily_agreement').delete('*')
     await query('manifests').delete('*')
@@ -57,6 +62,20 @@ describe('Agreement', () => {
     expect(daily_master_keys).toContain('VALIDATOR1MASTER')
     expect(daily_master_keys).toContain('VALIDATOR2MASTER')
     expect(daily_master_keys).toContain('VALIDATOR3MASTER')
+  })
+
+  test('Waits a full interval before the first agreement calculation', () => {
+    jest.useFakeTimers()
+    const calculate = jest
+      .spyOn(agreement, 'calculateAgreement')
+      .mockResolvedValue()
+
+    agreement.start()
+    jest.advanceTimersByTime(AGREEMENT_INTERVAL - 1)
+    expect(calculate).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(1)
+    expect(calculate).toHaveBeenCalledTimes(1)
   })
 
   test('Correctly decode server version for validators', () => {

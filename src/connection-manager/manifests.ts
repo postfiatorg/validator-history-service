@@ -47,6 +47,12 @@ const DOMAIN_RETRY_INTERVAL = MANIFESTS_JOB_INTERVAL
 // unverified, so abandoned domains eventually converge to the truth without
 // reintroducing short-term flapping.
 const DOMAIN_STALE_THRESHOLD = 7 * 24 * 60 * 60 * 1000 // 7 days
+// Master signatures of manifests being processed right now. Every connected
+// node streams the same manifest at the same moment, and all copies would pass
+// the throttle before the first one is saved. Processing each copy multiplies
+// the database work by the number of connections and, during a burst of
+// manifests, exhausts the connection pool.
+const manifestsInFlight = new Set<string>()
 let jobsStarted = false
 
 /**
@@ -102,6 +108,30 @@ export async function handleManifest(
     return
   }
 
+  const masterSignature = normalized.master_signature
+  if (manifestsInFlight.has(masterSignature)) {
+    return
+  }
+
+  manifestsInFlight.add(masterSignature)
+  try {
+    await processManifest(manifest, normalized)
+  } finally {
+    manifestsInFlight.delete(masterSignature)
+  }
+}
+
+/**
+ * Verifies the domain of a normalized manifest and saves the result.
+ *
+ * @param manifest - The manifest as received, passed to domain verification.
+ * @param normalized - The normalized form of the same manifest.
+ * @returns A promise that resolves to void whether or not the manifest was saved.
+ */
+async function processManifest(
+  manifest: Manifest | StreamManifest | string,
+  normalized: Manifest,
+): Promise<void> {
   const now = new Date()
   const masterSignature = normalized.master_signature
   const existing = masterSignature

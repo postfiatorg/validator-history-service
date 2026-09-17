@@ -162,7 +162,9 @@ async function setHandlers(
         return
       }
 
-      void handleWsMessageSubscribeTypes(
+      // Peers are untrusted: a message of an unexpected shape must be logged,
+      // not end the process as an unhandled rejection.
+      handleWsMessageSubscribeTypes(
         data,
         ledger_hashes,
         network,
@@ -170,6 +172,8 @@ async function setHandlers(
         ws,
         validationNetworkDb,
         enableAmendmentLedgerIndexMap,
+      ).catch((err: unknown) =>
+        log.error(`Error handling message from ${ws.url}`, err),
       )
     })
     ws.on('close', async (code) => {
@@ -309,13 +313,21 @@ export default async function startConnections(): Promise<void> {
     await backtrackAmendmentStatus()
 
     setInterval(() => {
-      void fetchAmendmentInfo()
-      void fetchAmendmentsFromLedgerEntry()
-      void createConnections()
+      fetchAmendmentInfo().catch((err: unknown) =>
+        log.error('Error fetching amendment info', err),
+      )
+      fetchAmendmentsFromLedgerEntry().catch((err: unknown) =>
+        log.error('Error fetching amendments from ledger entry', err),
+      )
+      createConnections().catch((err: unknown) =>
+        log.error('Error creating connections', err),
+      )
     }, CM_INTERVAL)
 
     setInterval(() => {
-      void backtrackAmendmentStatus()
+      backtrackAmendmentStatus().catch((err: unknown) =>
+        log.error('Error backtracking amendment status', err),
+      )
     }, BACKTRACK_INTERVAL)
   }
 }

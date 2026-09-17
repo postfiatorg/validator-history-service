@@ -132,6 +132,11 @@ export async function handleWsMessageSubscribeTypes(
   validationNetworkDb: Map<string, string>,
   enableAmendmentLedgerIndexMap: Map<string, number>,
 ): Promise<void> {
+  // Peers are untrusted and may send a message without a type.
+  if (typeof data.type !== 'string') {
+    return
+  }
+
   if (data.type === 'validationReceived') {
     const validationData = data as ValidationRaw
     if (ledger_hashes.includes(validationData.ledger_hash)) {
@@ -150,9 +155,17 @@ export async function handleWsMessageSubscribeTypes(
     if (validationNetwork) {
       validationData.ledger_fee = network_fee.get(validationNetwork)
     }
-    void agreement.handleValidation(validationData)
+    // An unhandled rejection in a stream handler ends the process, and a
+    // restart loses the in-memory validations of the current agreement window.
+    agreement
+      .handleValidation(validationData)
+      .catch((err: unknown) =>
+        log.error('Error handling stream validation', err),
+      )
   } else if (data.type === 'manifestReceived') {
-    void handleManifest(data as StreamManifest)
+    handleManifest(data as StreamManifest).catch((err: unknown) =>
+      log.error('Error handling stream manifest', err),
+    )
   } else if (data.type.includes('ledger')) {
     const current_ledger = data as StreamLedger
     ledger_hashes.push(current_ledger.ledger_hash)
@@ -233,7 +246,7 @@ async function processEnableAmendmentTransaction(
       api_version: RIPPLED_API_V1,
     })
 
-    void handleWsMessageLedgerEnableAmendments(ledgerResponse, network)
+    await handleWsMessageLedgerEnableAmendments(ledgerResponse, network)
     await client.disconnect()
   } catch (err) {
     log.error(

@@ -96,31 +96,30 @@ export async function getNodes(sinceStartDate: Date): Promise<WsNode[]> {
 async function handleRevocations(
   manifest: DatabaseManifest,
 ): Promise<DatabaseManifest> {
-  // Mark all older manifests as revoked
+  // Mark all older manifests as revoked. A failed query here or below yields
+  // an empty list: the manifests job recomputes the revoked columns every
+  // cycle, so a missed update is repaired there.
   const revokedSigningKeys = (await query('manifests')
     .where({ master_key: manifest.master_key })
     .andWhere('seq', '<', manifest.seq)
     .update({ revoked: true }, ['manifests.signing_key'])
-    .catch((err: Error) =>
-      log.error('Error revoking older manifests', err),
-    )) as DatabaseManifest[]
+    .catch((err: Error) => {
+      log.error('Error revoking older manifests', err)
+      return []
+    })) as DatabaseManifest[]
 
-  const revokedSigningKeysArray =
-    revokedSigningKeys.length > 0
-      ? await Promise.all(
-          revokedSigningKeys.map(async (obj) => {
-            return obj.signing_key
-          }),
-        )
-      : []
+  const revokedSigningKeysArray = revokedSigningKeys.map(
+    (revoked) => revoked.signing_key,
+  )
 
   // If there exists a newer manifest, mark this manifest as revoked
   const newer = (await query('manifests')
     .where({ master_key: manifest.master_key })
     .andWhere('seq', '>', manifest.seq)
-    .catch((err) =>
-      log.error('Error revoking current manifest', err),
-    )) as DatabaseManifest[]
+    .catch((err: Error) => {
+      log.error('Error revoking current manifest', err)
+      return []
+    })) as DatabaseManifest[]
 
   const updated = { revoked: false, ...manifest }
 
@@ -134,9 +133,14 @@ async function handleRevocations(
   )
 
   // updates revocations in validators table
-  await query('validators')
-    .whereIn('signing_key', revokedSigningKeysCleaned)
-    .update({ revoked: true })
+  if (revokedSigningKeysCleaned.length > 0) {
+    await query('validators')
+      .whereIn('signing_key', revokedSigningKeysCleaned)
+      .update({ revoked: true })
+      .catch((err: Error) =>
+        log.error('Error revoking validator signing keys', err),
+      )
+  }
 
   return updated
 }
@@ -283,6 +287,7 @@ export async function saveValidator(
   await query('validators')
     .where({ signing_key: validator.signing_key, revoked: null })
     .update({ revoked: false })
+    .catch((err) => log.error('Error Initializing Validator Revocation', err))
 }
 
 /**

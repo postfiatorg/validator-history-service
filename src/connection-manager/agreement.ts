@@ -27,7 +27,7 @@ import chains from './chains'
 
 const log = logger({ name: 'agreement' })
 
-const AGREEMENT_INTERVAL = 60 * 60 * 1000
+export const AGREEMENT_INTERVAL = 60 * 60 * 1000
 const PURGE_INTERVAL = 10 * 60 * 1000
 const VALIDATION_LEDGER_RANGE = 100000
 
@@ -160,12 +160,12 @@ class Agreement {
   private reported_at = new Date()
 
   /**
-   * Sets interval for agreement.
+   * Sets interval for agreement. The first calculation waits for a full
+   * interval: at startup only a few seconds of validations are in memory, so
+   * an immediate run scores every validator on one or two ledgers and reports
+   * 0% for any validator whose validation has not arrived yet.
    */
   public start(): void {
-    this.calculateAgreement().catch((err) => {
-      log.error('Initial agreement calculation failed', err)
-    })
     setInterval(() => {
       this.calculateAgreement().catch((err) => {
         log.error('Agreement calculation failed', err)

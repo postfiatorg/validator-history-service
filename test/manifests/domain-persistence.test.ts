@@ -3,8 +3,10 @@ import {
   destroy,
   query,
   initializeDatabase,
+  saveManifest,
   tearDown,
 } from '../../src/shared/database'
+import * as dbUtils from '../../src/shared/database/utils'
 import {
   verifyValidatorDomain,
   DomainVerification,
@@ -88,23 +90,23 @@ async function readLastVerified(): Promise<Date | null> {
   return rows[0]?.last_verified ?? null
 }
 
+beforeAll(async () => {
+  await tearDown()
+  await initializeDatabase()
+})
+
+afterAll(async () => {
+  await tearDown()
+  await destroy()
+})
+
+beforeEach(async () => {
+  mockVerify.mockReset()
+  await query('manifests').delete('*')
+  await query('validators').delete('*')
+})
+
 describe('domain verification persistence', () => {
-  beforeAll(async () => {
-    await tearDown()
-    await initializeDatabase()
-  })
-
-  afterAll(async () => {
-    await tearDown()
-    await destroy()
-  })
-
-  beforeEach(async () => {
-    mockVerify.mockReset()
-    await query('manifests').delete('*')
-    await query('validators').delete('*')
-  })
-
   test('preserves a verified domain when the TOML is unreachable', async () => {
     await seedManifest({
       domain_verified: true,
@@ -243,5 +245,68 @@ describe('domain verification persistence', () => {
 
     expect(mockVerify).not.toHaveBeenCalled()
     expect(await readDomainVerified()).toBe(true)
+  })
+})
+
+describe('manifest stream bursts', () => {
+  // Every connected node streams the same manifest at the same moment.
+  const STREAM_CONNECTIONS = 10
+  const MISSING_TABLE = 'missing_table'
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  async function savedManifestCount(): Promise<number> {
+    const rows = (await query('manifests')
+      .select('master_signature')
+      .where({ master_signature: MASTER_SIGNATURE })) as unknown[]
+    return rows.length
+  }
+
+  test('processes concurrent copies of the same manifest once', async () => {
+    mockVerify.mockResolvedValue({
+      status: DomainVerification.Failed,
+      message: 'no domain',
+      manifest,
+    })
+
+    await Promise.all(
+      Array.from({ length: STREAM_CONNECTIONS }, async () =>
+        handleManifest(manifest),
+      ),
+    )
+
+    expect(mockVerify).toHaveBeenCalledTimes(1)
+    expect(await savedManifestCount()).toBe(1)
+  })
+
+  test('processes a manifest again after an earlier copy failed', async () => {
+    mockVerify.mockResolvedValue({
+      status: DomainVerification.Failed,
+      message: 'no domain',
+      manifest,
+    })
+    const realQuery = dbUtils.query
+    jest
+      .spyOn(dbUtils, 'query')
+      .mockImplementationOnce(() => realQuery(MISSING_TABLE))
+
+    await expect(handleManifest(manifest)).rejects.toThrow(MISSING_TABLE)
+    await handleManifest(manifest)
+
+    expect(await savedManifestCount()).toBe(1)
+  })
+
+  test('saves a manifest when the revocation queries fail', async () => {
+    const realQuery = dbUtils.query
+    jest
+      .spyOn(dbUtils, 'query')
+      .mockImplementationOnce(() => realQuery(MISSING_TABLE))
+      .mockImplementationOnce(() => realQuery(MISSING_TABLE))
+
+    await saveManifest({ ...manifest, domain_verified: false })
+
+    expect(await savedManifestCount()).toBe(1)
   })
 })
