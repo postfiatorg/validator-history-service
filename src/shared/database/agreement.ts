@@ -39,7 +39,7 @@ export async function saveHourlyAgreement(
 export async function saveDailyAgreement(
   agreement: DailyAgreement,
 ): Promise<void> {
-  query('daily_agreement')
+  await query('daily_agreement')
     .insert(agreement)
     .onConflict(['main_key', 'day'])
     .merge()
