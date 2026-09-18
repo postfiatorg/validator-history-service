@@ -127,7 +127,7 @@ async function getHourlyAgreementScores(
   return query('hourly_agreement')
     .select(['agreement'])
     .where({ main_key: validator.master_key ?? validator.signing_key })
-    .where('start', '>', start)
+    .where('start', '>=', start)
     .where('start', '<', end)
     .then((scores) =>
       (scores as Array<{ agreement: AgreementScore }>).map(
