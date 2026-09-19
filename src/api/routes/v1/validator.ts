@@ -225,6 +225,7 @@ async function findInDatabase(
       'validators.current_index',
       'validators.domain',
       'validators.domain_verified',
+      'validators.ledger_hash',
       'validators.chain',
       'validators.networks',
       'validators.server_version',
