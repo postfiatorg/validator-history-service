@@ -85,7 +85,7 @@ async function findInDatabase(
       'location.timezone',
     ])
     .fullOuterJoin('location', 'crawls.public_key', 'location.public_key')
-    .where({ public_key })
+    .where({ 'crawls.public_key': public_key })
     .limit(1)) as NodeResponse[]
 
   const node = result.shift()
@@ -180,6 +180,7 @@ export async function handleNode(req: Request, res: Response): Promise<void> {
     if (node === undefined) {
       log.error(`Error handleNode: node not found. public_key = ${public_key}`)
       res.status(404).send({ result: 'error', message: 'node not found' })
+      return
     }
 
     res.status(200).send({

@@ -36,18 +36,16 @@ export function formatAgreementScore(agreement: AgreementScore): {
 export async function formatAmendments(
   amendmentsDb: string,
 ): Promise<Array<{ id: string; name: string }>> {
-  const res: Array<{ id: string; name: string }> = []
   const amendmentsList = amendmentsDb.split(',')
-  await Promise.all(
-    amendmentsList.map(async (amendment) => {
-      const info = (await query('amendments_info')
-        .select('id', 'name')
-        .where('id', amendment)
-        .first()) as { id: string; name: string }
-      res.push(info)
-    }),
+  return Promise.all(
+    amendmentsList.map(
+      async (amendment) =>
+        (await query('amendments_info')
+          .select('id', 'name')
+          .where('id', amendment)
+          .first()) as { id: string; name: string },
+    ),
   )
-  return res
 }
 
 /**
